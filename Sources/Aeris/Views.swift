@@ -388,7 +388,7 @@ struct SidebarView: View {
                 Text("Inboxy").font(.system(size: 30, weight: .light, design: .rounded)).tracking(1)
                 Text("✦").font(.system(size: 18)).foregroundStyle(Palette.accent)
                 Spacer()
-                Text("MAIL, AU CALME.").font(.system(size: 7, weight: .medium)).tracking(1.2).foregroundStyle(.white.opacity(0.4))
+                Text("LA BOITE À GMAIL").font(.system(size: 7, weight: .medium)).tracking(0.8).foregroundStyle(.white.opacity(0.6)).fixedSize()
             }.padding(.top, 39).padding(.horizontal, 23).padding(.bottom, 25)
             Button { model.openGmail(compose: true) } label: {
                 HStack { Image(systemName: "square.and.pencil"); Text("Nouveau message").font(.system(size: 12, weight: .semibold)); Spacer(); Text("⌘N").font(.system(size: 10)).opacity(0.65) }
@@ -445,7 +445,10 @@ struct SidebarView: View {
                         Button("Clair") { model.appearance = "light" }
                         Button("Sombre") { model.appearance = "dark" }
                     } label: { Image(systemName: model.appearance == "light" ? "sun.max" : "moon.stars") }.menuStyle(.borderlessButton).frame(width: 27).help("Apparence")
-                    Text(model.demo ? "Données fictives" : model.checkingBadges.isEmpty ? "Relevé chaque minute" : "Vérification des comptes…").font(.system(size: 9)).foregroundStyle(.white.opacity(0.45))
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(model.demo ? "Données fictives" : model.checkingBadges.isEmpty ? "Relevé chaque minute" : "Vérification des comptes…").font(.system(size: 9)).foregroundStyle(.white.opacity(0.45))
+                        ProgramVersionStatus(version: model.programVersion, state: model.updateState) { model.openProgramVersion() }
+                    }
                     Spacer()
                     if model.demo && !model.accounts.isEmpty { Button("Mes comptes") { model.changeDemo(false) }.font(.system(size: 10)).buttonStyle(.plain).foregroundStyle(Palette.accent) }
                     else { SettingsLink { Image(systemName: "gearshape").font(.system(size: 13)) }.buttonStyle(.plain) }
@@ -456,7 +459,10 @@ struct SidebarView: View {
     private var horizontalBar: some View {
         VStack(spacing: 10) {
             HStack(spacing: 14) {
-                Text("Inboxy ✦").font(.system(size: 18, weight: .medium, design: .rounded))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Inboxy ✦").font(.system(size: 18, weight: .medium, design: .rounded))
+                    Text("LA BOITE À GMAIL").font(.system(size: 7, weight: .medium)).tracking(0.8).foregroundStyle(.white.opacity(0.6))
+                }
                 ForEach(MailFolder.allCases) { folder in
                     Button { model.openFolder(folder) } label: {
                         Image(systemName: folder.symbol).frame(width: 28, height: 26)
@@ -477,6 +483,10 @@ struct SidebarView: View {
                         ForEach(model.filteredAccounts) { account in accountRow(account).frame(width: 200) }
                     }
                 }.scrollIndicators(.visible)
+            }
+            HStack {
+                Spacer()
+                ProgramVersionStatus(version: model.programVersion, state: model.updateState) { model.openProgramVersion() }
             }
         }.padding(.horizontal, 16).padding(.vertical, 12)
             .background(Palette.navigationBackground)
@@ -833,5 +843,28 @@ private struct ComposeAccountView: View {
                 .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack { Spacer(); Button("Annuler") { model.composeRequest = nil }.keyboardShortcut(.cancelAction) }
         }.padding(26).frame(width: 490).tint(Palette.accent)
+    }
+}
+
+struct ProgramVersionStatus: View {
+    let version: String
+    let state: AppUpdateState
+    let action: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: state.offer == nil || reduceMotion)) { context in
+            let phase = reduceMotion ? 1 : (sin(context.date.timeIntervalSinceReferenceDate * .pi / 1.8) + 1) / 2
+            let color = state.offer == nil ? Color.white.opacity(0.55) : Color(red: 0.30 + 0.70 * phase, green: 0.83 - 0.08 * phase, blue: 0.72 - 0.42 * phase)
+            Button(action: action) {
+                HStack(spacing: 4) {
+                    if state.offer != nil { Image(systemName: "arrow.down.circle.fill") }
+                    Text(state.label(version: version)).lineLimit(2).multilineTextAlignment(.leading)
+                }.font(.system(size: 9, weight: state.offer == nil ? .regular : .semibold))
+                    .foregroundStyle(color).contentShape(Rectangle())
+            }.buttonStyle(.plain).disabled(state == .checking)
+                .help(state.offer == nil ? "Vérifier les nouvelles versions sur GitHub" : "Ouvrir la page de téléchargement de la nouvelle version")
+                .accessibilityLabel("Inboxy, " + state.label(version: version))
+                .accessibilityHint(state.offer == nil ? "Vérifie les mises à jour" : "Ouvre la nouvelle version dans le navigateur")
+        }.fixedSize(horizontal: false, vertical: true)
     }
 }

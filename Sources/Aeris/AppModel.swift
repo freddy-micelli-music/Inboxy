@@ -29,6 +29,9 @@ import UserNotifications
     @Published var connecting = false
     @Published var notificationStatus = "Non activées"
     @Published var composeRequest: MailComposeRequest?
+    @Published private(set) var updateState: AppUpdateState = .idle
+    let programVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+    private var checkedUpdatesAtStartup = false
     @AppStorage("gmailFoldersExpanded") var gmailFoldersExpanded = false
     func toggleGmailNavigation() { gmailFoldersExpanded.toggle() }
     @AppStorage("navigationPlacement") var navigationPlacement = "left"
@@ -106,6 +109,10 @@ import UserNotifications
         load()
     }
     func start() {
+        if !checkedUpdatesAtStartup {
+            checkedUpdatesAtStartup = true
+            Task { [weak self] in await self?.checkForUpdates() }
+        }
         guard pollTask == nil else { return }
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
@@ -116,6 +123,19 @@ import UserNotifications
                 catch { return }
             }
         }
+    }
+    func checkForUpdates() async {
+        guard updateState != .checking else { return }
+        updateState = .checking
+        do {
+            if let offer = try await AppUpdateChecker.latest(currentVersion: programVersion) {
+                updateState = .available(offer)
+            } else { updateState = .upToDate }
+        } catch { updateState = .unavailable }
+    }
+    func openProgramVersion() {
+        if case .available(let offer) = updateState { NSWorkspace.shared.open(offer.releaseURL) }
+        else { Task { await checkForUpdates() } }
     }
     func select(_ account: MailAccount) {
         guard selectedID != account.id, !removing.contains(account.id) else { return }

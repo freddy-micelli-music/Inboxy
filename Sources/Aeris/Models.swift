@@ -205,3 +205,97 @@ struct MailComposeRequest: Identifiable {
         }
     }
 }
+
+// Stable numeric versions only: a beta tag never becomes an update for a stable build.
+struct ProgramVersion: Comparable {
+    let components: [Int]
+    let text: String
+    init?(_ tag: String) {
+        let value = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+        let parts = value.split(separator: ".", omittingEmptySubsequences: false)
+        guard parts.count == 3, parts.allSatisfy({ part in
+            !part.isEmpty && part.count <= 9 && part.utf8.allSatisfy { (48...57).contains($0) }
+                && (part.count == 1 || part.first != "0")
+        }) else { return nil }
+        components = parts.compactMap { Int($0) }
+        guard components.count == 3 else { return nil }
+        text = value
+    }
+    static func < (lhs: Self, rhs: Self) -> Bool { lhs.components.lexicographicallyPrecedes(rhs.components) }
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.components == rhs.components }
+}
+
+struct AppUpdateOffer: Equatable {
+    let version: String
+    let releaseURL: URL
+}
+
+enum AppUpdateState: Equatable {
+    case idle, checking, upToDate, unavailable, available(AppUpdateOffer)
+    var offer: AppUpdateOffer? { if case .available(let value) = self { return value }; return nil }
+    func label(version: String) -> String {
+        switch self {
+        case .idle: return "Version \(version)"
+        case .checking: return "Version \(version) · Vérification…"
+        case .upToDate: return "Version \(version) · À jour"
+        case .unavailable: return "Version \(version) · À vérifier"
+        case .available(let offer): return "v\(version) · \(offer.version) disponible"
+        }
+    }
+}
+
+enum AppUpdateChecker {
+    static let endpoint = URL(string: "https://api.github.com/repos/freddy-micelli-music/Inboxy/releases/latest")!
+    private struct Release: Decodable {
+        struct Asset: Decodable {
+            let name: String
+            let state: String
+            let size: Int
+            let browser_download_url: URL
+        }
+        let tag_name: String
+        let html_url: URL
+        let draft: Bool
+        let prerelease: Bool
+        let assets: [Asset]
+    }
+    static func offer(from data: Data, currentVersion: String) throws -> AppUpdateOffer? {
+        guard data.count <= 512_000, let current = ProgramVersion(currentVersion) else {
+            throw AerisError.message("Version ou réponse de mise à jour invalide.")
+        }
+        let release = try JSONDecoder().decode(Release.self, from: data)
+        guard !release.draft, !release.prerelease, let latest = ProgramVersion(release.tag_name) else {
+            throw AerisError.message("La publication n’est pas une version stable.")
+        }
+        guard latest > current else { return nil }
+        let pagePath = "/freddy-micelli-music/Inboxy/releases/tag/\(release.tag_name)"
+        let fileName = "Inboxy-\(latest.text)-macOS.zip"
+        let downloadPath = "/freddy-micelli-music/Inboxy/releases/download/\(release.tag_name)/\(fileName)"
+        guard trustedURL(release.html_url, path: pagePath), release.assets.contains(where: {
+            $0.name == fileName && $0.state == "uploaded" && $0.size > 0 && trustedURL($0.browser_download_url, path: downloadPath)
+        }) else { throw AerisError.message("Le téléchargement Inboxy n’est pas encore disponible.") }
+        return AppUpdateOffer(version: latest.text, releaseURL: release.html_url)
+    }
+    private static func trustedURL(_ url: URL, path: String) -> Bool {
+        url.scheme == "https" && url.host == "github.com" && url.path == path
+            && url.user == nil && url.password == nil && url.port == nil && url.query == nil && url.fragment == nil
+    }
+    static func latest(currentVersion: String, session suppliedSession: URLSession? = nil) async throws -> AppUpdateOffer? {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.httpCookieStorage = nil
+        configuration.httpShouldSetCookies = false
+        configuration.urlCredentialStorage = nil
+        configuration.urlCache = nil
+        let session = suppliedSession ?? URLSession(configuration: configuration)
+        defer { if suppliedSession == nil { session.finishTasksAndInvalidate() } }
+        var request = URLRequest(url: endpoint, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("2026-03-10", forHTTPHeaderField: "X-GitHub-Api-Version")
+        request.setValue("Inboxy/\(currentVersion)", forHTTPHeaderField: "User-Agent")
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200, http.url == endpoint else {
+            throw AerisError.message("Vérification GitHub indisponible.")
+        }
+        return try offer(from: data, currentVersion: currentVersion)
+    }
+}
