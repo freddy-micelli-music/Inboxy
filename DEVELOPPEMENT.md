@@ -16,7 +16,7 @@ Projet Xcode SwiftUI + WebKit pour réunir des comptes Gmail dans des profils in
 2. Choisir **Aeris → My Mac**.
 3. Cliquer sur **▶︎** ou appuyer sur **⌘R**.
 
-macOS 14 minimum ; Xcode 15 ou plus récent. Projet vérifié avec Xcode 27.1 / Swift 6.4 en mode langage Swift 5. Aucune dépendance externe. Signature locale ; le binaire Release fourni est universel Intel + Apple Silicon, sans notarisation de distribution.
+macOS 14 minimum ; Xcode 26 ou plus récent. Projet vérifié avec Xcode 27.1 / Swift 6.4 en mode langage Swift 5. Aucune dépendance externe. Signature locale ; le binaire Release fourni est universel Intel + Apple Silicon, sans notarisation de distribution.
 
 ## Ajouter un compte dans Inboxy
 
@@ -86,7 +86,7 @@ La lecture native est en lecture seule, par pages de 25 messages, avec corps tex
 
 - [VALIDATION.md](VALIDATION.md) : contrôles réussis et limites des essais.
 - [ARCHITECTURE.md](ARCHITECTURE.md) : séparation des profils, Google et Mailplane, stockage et étapes restantes.
-- `./check.sh` : 78 contrôles, dont encodages OAuth/MIME, compatibilité des anciens comptes et persistance de 45 profils WEB.
+- `./check.sh` : 94 contrôles, dont encodages OAuth/MIME, compatibilité des anciens comptes et persistance de 45 profils WEB.
 - `./check.sh --webkit` : contrôle supplémentaire de cookies dans deux profils de test, à lancer dans un Terminal normal. Non validé dans l’environnement restreint de l’agent.
 - `./build.sh` : méthode de compilation supplémentaire ; le projet Xcode reste le parcours habituel.
 
@@ -136,3 +136,21 @@ Ce mécanisme signale les nouvelles versions ; il ne télécharge ni n’install
 Une nouvelle installation affiche **Bienvenue dans Inboxy**, sans compte ni message fictif. Le bouton **Connecter mon premier compte Gmail** ouvre le formulaire de connexion intégrée existant. Aucun compte n’est ajouté avant la saisie et la validation de l’utilisateur. Le menu de démonstration et les données d’exemple ont été retirés du programme. L’écran d’accueil revient également si l’utilisateur retire son dernier compte.
 
 Les installations existantes conservent leurs profils, leur ordre et leurs UUID. Le champ historique `isDemo` reste uniquement pour décoder les anciens fichiers et ignorer un éventuel profil fictif enregistré dans ceux-ci, sans effacer ni réécrire le fichier à la lecture. Les sessions Google sont conservées.
+
+## Version 0.3.9 — sauvegarde privée et panneaux redimensionnables (27 octobre 2026)
+
+### Sauvegarder et transférer les comptes
+
+Dans **Réglages → Général → Sauvegarde et restauration**, choisir **Sauvegarder mes comptes…**. Créer un mot de passe dédié au fichier, le confirmer puis choisir son emplacement. Le fichier `.inboxybackup` contient les profils dans leur ordre, leurs noms/groupes/options, leurs cookies de session et, à partir de macOS 26, leur stockage local WebKit. Les jetons de la méthode API sont inclus lorsqu’ils sont accessibles au Trousseau. Les mots de passe Gmail ne sont pas recueillis.
+
+Sur l’autre Mac : installer Inboxy, ouvrir **Général → Restaurer mes comptes…**, saisir le mot de passe du fichier et le sélectionner. Un aperçu indique les comptes qui seront ajoutés ; cliquer sur **Restaurer les comptes**. Les adresses déjà présentes sont ignorées, sans distinction de casse. Les comptes et sessions existants ne sont pas remplacés. Chaque compte ajouté reçoit un nouveau stockage indépendant ; l’ordre des nouveaux comptes suit celui de la sauvegarde.
+
+Le fichier est chiffré avec AES-256-GCM et une clé dérivée du mot de passe par PBKDF2-HMAC-SHA256, avec sel aléatoire et 200 000 itérations. Inboxy ne conserve pas le mot de passe de sauvegarde. Garder le fichier privé et conserver son mot de passe séparément ; il est nécessaire pour restaurer. Les fichiers de sauvegarde sont exclus du suivi Git par défaut.
+
+**Une connexion sans ressaisie n’est pas garantie sur un autre Mac.** Google peut invalider une session, exiger une vérification ou demander une reconnexion. Le transfert du stockage local exige macOS 26 ou plus sur les deux Mac ; les cookies sont transférables dès macOS 14. Les bases IndexedDB, les caches complets, les clés liées à l’appareil et une copie hors ligne des messages ne sont pas inclus. L’import WebKit d’une session fictive est testé localement ; une migration réelle vers un deuxième Mac avec acceptation par Google n’a pas été validée.
+
+Les APIs publiques utilisées sont [WKHTTPCookieStore](https://developer.apple.com/documentation/webkit/wkhttpcookiestore) et [WKWebsiteDataStore](https://developer.apple.com/documentation/webkit/wkwebsitedatastore). Le SDK macOS 26 est nécessaire pour compiler ; l’application garde une cible d’exécution macOS 14.
+
+### Ajuster la place des blocs
+
+Dans la barre latérale à gauche ou à droite, deux petites poignées vertes séparent les **dossiers Gmail**, **Travail** et **Personnel**. Faire glisser une poignée vers le haut ou le bas pour modifier les hauteurs. Chaque bloc possède son propre défilement. Les proportions sont mémorisées pour les prochains lancements ; un double-clic sur une poignée remet les proportions initiales. Le bouton + de Corbeille conserve l’accès aux dossiers et libellés dans le premier panneau. La navigation placée en haut ou en bas conserve sa présentation en ruban.
