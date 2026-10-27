@@ -4,8 +4,6 @@ import UserNotifications
 
 @MainActor final class AppModel: ObservableObject {
     @Published var accounts: [MailAccount] = []
-    @Published var demoAccounts = DemoData.accounts()
-    @Published var demo = true
     @Published var selectedID: UUID?
     @Published var folder: MailFolder = .inbox
     @Published var search = ""
@@ -41,7 +39,7 @@ import UserNotifications
     let webSessions = WebSessions()
     let auth = GoogleAuth()
     let api = GmailAPI()
-    private let persistence = AccountPersistence()
+    private let persistence: AccountPersistence
     private var loadTask: Task<Void, Never>?
     private var bodyTask: Task<Void, Never>?
     private var pollTask: Task<Void, Never>?
@@ -66,7 +64,7 @@ import UserNotifications
         webSessions.setZoom(1, account: account)
     }
 
-    var visibleAccounts: [MailAccount] { demo ? demoAccounts : accounts }
+    var visibleAccounts: [MailAccount] { accounts }
     var selectedAccount: MailAccount? { visibleAccounts.first { $0.id == selectedID } }
     var selectedMessage: MailMessage? { messages.first { $0.id == selectedMessageID } }
     var filteredAccounts: [MailAccount] {
@@ -97,10 +95,9 @@ import UserNotifications
     }
     var scheme: ColorScheme? { appearance == "dark" ? .dark : appearance == "light" ? .light : nil }
 
-    init() {
+    init(persistence: AccountPersistence = AccountPersistence()) {
+        self.persistence = persistence
         do { accounts = try persistence.load() } catch { alert = "Impossible de lire les comptes sauvegardés. Le fichier est conservé : \(error.localizedDescription)" }
-        demo = accounts.isEmpty
-        for account in demoAccounts { unread[account.id] = 3 }
         selectedID = visibleAccounts.first?.id
         webSessions.mailboxDidChange = { [weak self] id, state in self?.syncMailbox(id, state) }
         webSessions.mailtoRequested = { [weak self] url in
@@ -141,11 +138,6 @@ import UserNotifications
         guard selectedID != account.id, !removing.contains(account.id) else { return }
         selectedID = account.id; search = ""; load()
     }
-    func changeDemo(_ value: Bool) {
-        badgeGeneration = UUID(); webSessions.cancelBadgeChecks()
-        demo = value; selectedID = visibleAccounts.first?.id
-        webMode = false; search = ""; accountSearch = ""; load()
-    }
     func cycle(_ delta: Int) {
         guard let index = visibleAccounts.firstIndex(where: { $0.id == selectedID }), !visibleAccounts.isEmpty else { return }
         select(visibleAccounts[(index + delta + visibleAccounts.count) % visibleAccounts.count])
@@ -157,15 +149,6 @@ import UserNotifications
         guard let account = selectedAccount else { messages = []; selectedMessageID = nil; loading = false; return }
         if !more { messages = []; selectedMessageID = nil; nextPage = nil; hydrated.removeAll() }
         if account.usesWeb { loading = false; return }
-        if account.isDemo {
-            let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
-            messages = DemoData.messages(for: account).filter { message in
-                let matches: Bool
-                switch folder { case .inbox: matches = message.labels.contains("INBOX"); case .unread: matches = message.unread; case .starred: matches = message.starred; case .sent: matches = message.labels.contains("SENT"); case .trash: matches = message.labels.contains("TRASH") }
-                return matches && (query.isEmpty || (message.sender + message.subject + message.body).localizedCaseInsensitiveContains(query))
-            }
-            selectedMessageID = messages.first?.id; loading = false; return
-        }
         loading = true
         let query = folder.query + (search.isEmpty ? "" : " " + search)
         let cursor = more ? nextPage : nil
@@ -202,14 +185,14 @@ import UserNotifications
     func addWebAccount(email rawEmail: String, name: String, group: String) {
         guard let email = AccountInput.email(rawEmail) else { alert = "Saisissez une adresse e-mail valide."; return }
         if let existing = accounts.first(where: { $0.email.caseInsensitiveCompare(email) == .orderedSame }) {
-            demo = false; selectedID = existing.id; webMode = true; showAdd = false; load(); return
+            selectedID = existing.id; webMode = true; showAdd = false; load(); return
         }
         var account = MailAccount(name: name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? email.components(separatedBy: "@")[0] : name.trimmingCharacters(in: .whitespacesAndNewlines), email: email, group: group, colorIndex: accounts.count)
         account.webOnly = true
         do {
             let updated = accounts + [account]
             try persistence.save(updated); accounts = updated
-            demo = false; selectedID = account.id; webMode = true; showAdd = false
+            selectedID = account.id; webMode = true; showAdd = false
             search = ""; accountSearch = ""; load()
         } catch { alert = error.localizedDescription }
     }
@@ -231,7 +214,7 @@ import UserNotifications
             var updated = accounts
             if let index = updated.firstIndex(where: { $0.id == account.id }) { updated[index] = account } else { updated.append(account) }
             try persistence.save(updated); accounts = updated; provisional = nil
-            demo = false; selectedID = account.id; showAdd = false; webMode = false; search = ""; accountSearch = ""; load()
+            selectedID = account.id; showAdd = false; webMode = false; search = ""; accountSearch = ""; load()
             await pollBadges()
         } catch {
             if let provisional { try? KeychainStore.delete(provisional) }
@@ -244,32 +227,22 @@ import UserNotifications
         do { try persistence.save(updated); accounts = updated; return true }
         catch { alert = error.localizedDescription; return false }
     }
-    func moveAccount(_ id: UUID, relativeTo targetID: UUID, after: Bool, demoMode: Bool) {
-        guard demo == demoMode, !removing.contains(id), !removing.contains(targetID) else { return }
+    func moveAccount(_ id: UUID, relativeTo targetID: UUID, after: Bool) {
+        guard !removing.contains(id), !removing.contains(targetID) else { return }
         let updated = AccountOrdering.moving(id, relativeTo: targetID, after: after, in: visibleAccounts)
         guard updated != visibleAccounts else { return }
-        if demo { demoAccounts = updated; return }
         do { try persistence.save(updated); accounts = updated }
         catch { alert = "Impossible de sauvegarder l’ordre des comptes : \(error.localizedDescription)" }
     }
     func rename(_ account: MailAccount, to rawName: String) -> Bool {
         let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty, !removing.contains(account.id) else { return false }
-        if account.isDemo, let index = demoAccounts.firstIndex(where: { $0.id == account.id }) {
-            demoAccounts[index].name = name
-            return true
-        }
         guard var latest = accounts.first(where: { $0.id == account.id }) else { return false }
         latest.name = name
         return update(latest)
     }
     func remove(_ account: MailAccount) async {
         guard !removing.contains(account.id) else { return }
-        if account.isDemo {
-            demoAccounts.removeAll { $0.id == account.id }; unread[account.id] = nil
-            if selectedID == account.id { selectedID = visibleAccounts.first?.id; load() }
-            return
-        }
         removing.insert(account.id)
         defer { removing.remove(account.id) }
         if selectedID == account.id {
@@ -293,7 +266,7 @@ import UserNotifications
         } catch { alert = "Le compte reste dans la liste pour permettre une nouvelle tentative. " + error.localizedDescription }
     }
     func pollBadges() async {
-        guard !demo, !polling else { return }
+        guard !polling else { return }
         polling = true
         defer { polling = false }
         let stamp = badgeGeneration
@@ -310,13 +283,13 @@ import UserNotifications
         updateDock()
     }
     private func checkBadge(_ account: MailAccount, stamp: UUID) async {
-        guard !demo, badgeGeneration == stamp, !Task.isCancelled, accounts.contains(where: { $0.id == account.id }), !removing.contains(account.id) else { return }
+        guard badgeGeneration == stamp, !Task.isCancelled, accounts.contains(where: { $0.id == account.id }), !removing.contains(account.id) else { return }
         checkingBadges.insert(account.id)
         defer { checkingBadges.remove(account.id) }
         let started = Date()
         do {
             let count = try await (account.usesWeb ? webSessions.checkUnread(account: account) : api.unread(account: account.id))
-            guard !demo, badgeGeneration == stamp, accounts.contains(where: { $0.id == account.id }), !removing.contains(account.id) else { return }
+            guard badgeGeneration == stamp, accounts.contains(where: { $0.id == account.id }), !removing.contains(account.id) else { return }
             // A live Gmail update received during the probe is more recent.
             guard badgeCheckedAt[account.id].map({ $0 <= started }) ?? true else { return }
             let previous = unread[account.id]
@@ -327,7 +300,7 @@ import UserNotifications
             }
         } catch is CancellationError { }
         catch {
-            guard !demo, badgeGeneration == stamp, accounts.contains(where: { $0.id == account.id }), !removing.contains(account.id) else { return }
+            guard badgeGeneration == stamp, accounts.contains(where: { $0.id == account.id }), !removing.contains(account.id) else { return }
             if badgeCheckedAt[account.id].map({ $0 <= started }) ?? true { badgeErrors[account.id] = error.localizedDescription }
         }
     }
@@ -372,15 +345,13 @@ import UserNotifications
         do {
             var validated = request
             validated.files = try MailComposeRequest.readableFiles(request.files)
-            if demo { changeDemo(false) }
             select(account); webMode = true
             webSessions.compose(account: account, request: validated)
             composeRequest = nil
         } catch { alert = error.localizedDescription }
     }
     func openGmail(compose: Bool = false) {
-        guard let account = selectedAccount else { return }
-        guard !account.isDemo else { alert = "Compte fictif : ajoutez un compte Google pour ouvrir votre messagerie."; return }
+        guard let account = selectedAccount else { showAdd = true; return }
         if account.usesWeb {
             webMode = true
             let url = URL(string: "https://mail.google.com/mail/u/0/#" + (compose ? "inbox?compose=new" : "inbox"))!

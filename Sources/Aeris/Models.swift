@@ -10,6 +10,7 @@ struct MailAccount: Identifiable, Codable, Equatable {
     var email: String
     var group: String
     var colorIndex: Int = 0
+    // Legacy decoding only: old fictitious profiles are excluded by AccountPersistence.
     var isDemo: Bool = false
     var notifications: Bool = true
     // Optional for decoding accounts created before integrated Gmail profiles.
@@ -72,30 +73,6 @@ enum MailFolder: String, CaseIterable, Identifiable {
     }
 }
 
-enum DemoData {
-    static let names = ["Studio principal", "Personnel", "Atelier créatif", "Équipe produit", "Relations clients", "Administration", "Comptabilité", "Voyages", "Presse & médias", "Partenariats", "Architecture", "Photographie", "Éditions", "Direction", "Production", "Support", "Événements", "Design", "Développement", "Recherche", "Marketing", "Juridique", "Recrutement", "Communauté", "Formation", "International", "Boutique", "Archives", "Projets spéciaux", "Investissements", "Immobilier", "Association", "Musique", "Famille", "Veille", "Laboratoire"]
-    static func accounts() -> [MailAccount] {
-        names.enumerated().map { i, name in
-            MailAccount(name: name, email: "\(i == 0 ? "bonjour" : "compte\(i + 1)")@exemple.test", group: i == 1 || i >= 32 ? "Personnel" : "Travail", colorIndex: i, isDemo: true)
-        }
-    }
-    static func messages(for account: MailAccount) -> [MailMessage] {
-        let rows: [(String, String, String, String)] = [
-            ("Camille Laurent", "La suite commence ici", "J’ai pris le temps de réunir nos idées pour la prochaine étape. Le résultat me plaît beaucoup.", "Bonjour,\n\nJ’ai pris le temps de réunir nos idées pour la prochaine étape. Le résultat me plaît beaucoup.\n\nUne direction plus simple, des matières naturelles et une vraie attention portée aux détails : c’est exactement ce que nous avions imaginé ensemble.\n\nJe vous propose que l’on se retrouve mardi à 10 h pour parcourir les dernières pistes. D’ici là, vos remarques sont les bienvenues.\n\nÀ très vite,\nCamille\n\nDirection de création · Atelier Horizon"),
-            ("Maison Kitsuné", "Une invitation, rien que pour vous", "Notre nouvelle collection se découvre en avant-première jeudi soir.", "Bonjour,\n\nNous serions heureux de vous accueillir pour découvrir notre nouvelle collection.\n\nRendez-vous jeudi à partir de 18 h dans notre espace parisien.\n\nL’équipe Maison Kitsuné"),
-            ("Thomas Bernard", "Projet Horizon — les dernières pistes", "Les trois propositions sont prêtes. On en parle demain ?", "Bonjour,\n\nLes trois propositions sont prêtes. J’ai intégré les retours de toute l’équipe.\n\nOn en parle demain ?\n\nThomas"),
-            ("Notion", "Votre semaine, en perspective", "Retrouvez les nouvelles de votre espace de travail.", "Voici les dernières nouvelles de votre espace de travail.\n\nTrois projets ont avancé cette semaine. Prenez un moment pour les découvrir."),
-            ("Léa Moreau", "Un café la semaine prochaine ?", "Je passe dans le quartier et j’aimerais vous retrouver.", "Bonjour !\n\nJe passe dans le quartier la semaine prochaine. Ce serait un plaisir de vous retrouver autour d’un café.\n\nÀ bientôt,\nLéa"),
-            ("Linear", "Le point sur vos projets", "Une belle progression pour l’équipe cette semaine.", "Le point sur vos projets\n\nDouze tâches terminées, trois nouveaux jalons. Toute l’équipe avance dans la même direction."),
-            ("Arthur Petit", "Quelques images de Lisbonne", "La lumière était incroyable. Voici une première sélection.", "Bonjour,\n\nLa lumière était incroyable à Lisbonne. J’ai préparé une première sélection pour notre prochain échange.\n\nArthur"),
-            ("Équipe Inboxy", "Un espace pour chaque univers", "Vos comptes, réunis avec élégance. Bienvenue dans la démonstration.", "Bienvenue dans Inboxy.\n\nCes messages sont fictifs. Vous pouvez explorer 36 comptes, filtrer les messages, changer de thème et essayer le sélecteur rapide.\n\nPour vos vrais messages, ajoutez un compte Google depuis le bouton +. La connexion s’effectue dans votre navigateur.\n\nBonne découverte.")
-        ]
-        return rows.enumerated().map { i, row in
-            MailMessage(id: "demo-\(account.id)-\(i)", accountID: account.id, sender: row.0, senderEmail: "contact@exemple.test", subject: row.1, snippet: row.2, body: row.3, date: Date().addingTimeInterval(-Double(i * 3200 + 180)), unread: i < 3, starred: i == 0 || i == 4, labels: [i == 7 ? "SENT" : "INBOX"])
-        }
-    }
-}
-
 struct AccountPersistence {
     let url: URL
     init(root: URL? = nil) {
@@ -104,7 +81,7 @@ struct AccountPersistence {
     }
     func load() throws -> [MailAccount] {
         guard FileManager.default.fileExists(atPath: url.path) else { return [] }
-        return try JSONDecoder().decode([MailAccount].self, from: Data(contentsOf: url))
+        return try JSONDecoder().decode([MailAccount].self, from: Data(contentsOf: url)).filter { !$0.isDemo }
     }
     func save(_ accounts: [MailAccount]) throws {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)

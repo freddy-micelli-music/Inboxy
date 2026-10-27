@@ -105,11 +105,9 @@ struct ContentView: View {
     }
     private var headerActions: some View {
         HStack(spacing: 10) {
-            if model.demo {
-                Label("DÉMONSTRATION · 36 COMPTES", systemImage: "sparkle").font(.system(size: 9, weight: .semibold)).tracking(1).foregroundStyle(Palette.accent)
-            } else if model.selectedAccount?.usesWeb == true {
+            if model.selectedAccount?.usesWeb == true {
                 Label("Gmail intégré", systemImage: "lock.rectangle").labelStyle(.iconOnly).font(.system(size: 11)).foregroundStyle(Palette.accent).help("Gmail intégré")
-            } else {
+            } else if model.selectedAccount != nil {
                 Menu {
                     Button("Lecture native") { model.webMode = false }
                     Button("Gmail web · expérimental") { model.webMode = true }
@@ -152,14 +150,9 @@ struct ContentView: View {
         IntegratedGmailView(account: account, sessions: model.webSessions, showNative: account.usesWeb ? nil : { model.webMode = false })
     }
     private var emptyWorkspace: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "paperplane").font(.system(size: 56, weight: .ultraLight)).foregroundStyle(Palette.accent)
-            Text("Tous vos univers. Un seul espace.").font(.system(size: 28, weight: .light))
-            Text("Ajoutez votre premier compte Google, ou explorez la démonstration.").foregroundStyle(.secondary)
-            Button("Ajouter un compte Google") { model.showAdd = true }.buttonStyle(.borderedProminent)
-            Button("Explorer les 36 comptes de démonstration") { model.changeDemo(true) }.buttonStyle(.plain).foregroundStyle(Palette.accent)
-        }.frame(maxWidth: .infinity, maxHeight: .infinity)
+        FirstAccountWelcome { model.showAdd = true }
     }
+
 }
 
 private struct NextAppointmentTicker: View {
@@ -360,7 +353,7 @@ struct SidebarView: View {
                 }
             } message: {
                 if let account = deleteTarget {
-                    Text(account.isDemo ? "Ce compte fictif sera retiré de la démonstration jusqu’au prochain lancement." : "Le compte \(account.email) et sa session locale seront retirés d’Inboxy. Vos messages et votre compte Google ne seront pas supprimés." + (account.usesWeb ? "" : " L’autorisation API Google sera également révoquée."))
+                    Text("Le compte \(account.email) et sa session locale seront retirés d’Inboxy. Vos messages et votre compte Google ne seront pas supprimés." + (account.usesWeb ? "" : " L’autorisation API Google sera également révoquée."))
                 }
             }
     }
@@ -446,12 +439,11 @@ struct SidebarView: View {
                         Button("Sombre") { model.appearance = "dark" }
                     } label: { Image(systemName: model.appearance == "light" ? "sun.max" : "moon.stars") }.menuStyle(.borderlessButton).frame(width: 27).help("Apparence")
                     VStack(alignment: .leading, spacing: 5) {
-                        Text(model.demo ? "Données fictives" : model.checkingBadges.isEmpty ? "Relevé chaque minute" : "Vérification des comptes…").font(.system(size: 9)).foregroundStyle(.white.opacity(0.45))
+                        Text(model.accounts.isEmpty ? "Aucun compte connecté" : model.checkingBadges.isEmpty ? "Relevé chaque minute" : "Vérification des comptes…").font(.system(size: 9)).foregroundStyle(.white.opacity(0.45))
                         ProgramVersionStatus(version: model.programVersion, state: model.updateState) { model.openProgramVersion() }
                     }
                     Spacer()
-                    if model.demo && !model.accounts.isEmpty { Button("Mes comptes") { model.changeDemo(false) }.font(.system(size: 10)).buttonStyle(.plain).foregroundStyle(Palette.accent) }
-                    else { SettingsLink { Image(systemName: "gearshape").font(.system(size: 13)) }.buttonStyle(.plain) }
+                    SettingsLink { Image(systemName: "gearshape").font(.system(size: 13)) }.buttonStyle(.plain)
                 }
             }.padding(.horizontal, 23).padding(.bottom, 18)
         }.background(Palette.navigationBackground)
@@ -517,7 +509,7 @@ struct SidebarView: View {
             }.buttonStyle(.plain)
                 .help(model.badgeHelp(account))
                 .overlay(AccountDragSurface(account: account, horizontal: horizontal, select: { model.select(account) }, move: { id, after in
-                    model.moveAccount(id, relativeTo: account.id, after: after, demoMode: model.demo)
+                    model.moveAccount(id, relativeTo: account.id, after: after)
                 }))
             Menu { accountActions(account) } label: {
                 Image(systemName: "ellipsis").font(.system(size: 13, weight: .medium)).foregroundStyle(.white.opacity(0.6)).frame(width: 22, height: 28)
@@ -687,13 +679,12 @@ struct MessageListView: View {
                 }
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass").foregroundStyle(.tertiary)
-                    TextField(model.demo ? "Rechercher un message" : "Rechercher dans Gmail ↵", text: $model.search)
+                    TextField("Rechercher dans Gmail ↵", text: $model.search)
                         .textFieldStyle(.plain).font(.system(size: 12)).onSubmit { model.load() }
-                        .onChange(of: model.search) { if model.demo { model.load() } }
                     if !model.search.isEmpty { Button { model.search = ""; model.load() } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }.buttonStyle(.plain) }
                 }.padding(10).background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8))
                 HStack {
-                    Text(model.demo ? "APERÇU DE VOTRE JOURNÉE" : "MESSAGES · LECTURE SEULE").font(.system(size: 8, weight: .medium)).tracking(1.2).foregroundStyle(.secondary)
+                    Text("MESSAGES · LECTURE SEULE").font(.system(size: 8, weight: .medium)).tracking(1.2).foregroundStyle(.secondary)
                     Spacer()
                     Text("\(model.messages.count)").font(.system(size: 9, design: .monospaced)).foregroundStyle(.tertiary)
                 }
@@ -717,7 +708,7 @@ struct MessageListView: View {
                     }.padding(.horizontal, 10).padding(.bottom, 20)
                 }
             }
-            HStack(spacing: 6) { Circle().fill(Palette.accent).frame(width: 4, height: 4); Text(model.demo ? "Démonstration interactive" : "Actualisation des badges · 3 min").font(.system(size: 9)).foregroundStyle(.secondary); Spacer() }.padding(16)
+            HStack(spacing: 6) { Circle().fill(Palette.accent).frame(width: 4, height: 4); Text("Relevé des comptes chaque minute").font(.system(size: 9)).foregroundStyle(.secondary); Spacer() }.padding(16)
         }.background(Color.surface.opacity(0.45))
     }
 }
@@ -750,7 +741,7 @@ struct MessageReaderView: View {
         if let message = model.selectedMessage {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Label("\(model.demo ? "APERÇU" : "LECTURE SEULE")", systemImage: "envelope.open").font(.system(size: 9, weight: .medium)).tracking(1).foregroundStyle(.secondary)
+                    Label("LECTURE SEULE", systemImage: "envelope.open").font(.system(size: 9, weight: .medium)).tracking(1).foregroundStyle(.secondary)
                     Spacer()
                     Button { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(message.body, forType: .string) } label: { Image(systemName: "doc.on.doc") }.buttonStyle(.plain).help("Copier le texte")
                     Button { model.openGmail() } label: { Image(systemName: "arrow.up.right.square") }.buttonStyle(.plain).padding(.leading, 12).help("Ouvrir dans Gmail")
@@ -772,15 +763,6 @@ struct MessageReaderView: View {
                         Divider()
                         if model.loadingBody { ProgressView("Chargement du message…").font(.system(size: 12)).frame(maxWidth: .infinity, minHeight: 160) }
                         else { Text(message.body).font(.system(size: 13)).lineSpacing(8).foregroundStyle(.primary.opacity(0.8)).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled) }
-                        if model.demo {
-                            HStack(spacing: 12) {
-                                Image(systemName: "sparkles").foregroundStyle(Palette.accent)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("De la place pour tous vos univers.").font(.system(size: 12, weight: .medium))
-                                    Text("36 comptes fictifs. Une seule interface.").font(.system(size: 10)).foregroundStyle(.secondary)
-                                }
-                            }.frame(maxWidth: .infinity, alignment: .leading).padding(20).background(Palette.accent.opacity(0.055), in: RoundedRectangle(cornerRadius: 11)).padding(.top, 10)
-                        }
                         HStack {
                             Button { model.openGmail() } label: { Label("Répondre dans Gmail", systemImage: "arrowshape.turn.up.left").font(.system(size: 11, weight: .medium)).padding(.horizontal, 8).padding(.vertical, 5) }.buttonStyle(.bordered)
                             Spacer()
@@ -866,5 +848,29 @@ struct ProgramVersionStatus: View {
                 .accessibilityLabel("Inboxy, " + state.label(version: version))
                 .accessibilityHint(state.offer == nil ? "Vérifie les mises à jour" : "Ouvre la nouvelle version dans le navigateur")
         }.fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+struct FirstAccountWelcome: View {
+    let connect: () -> Void
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "envelope.badge.shield.half.filled")
+                .font(.system(size: 56, weight: .ultraLight)).foregroundStyle(Palette.accent)
+                .accessibilityHidden(true)
+            Text("Bienvenue dans Inboxy").font(.system(size: 28, weight: .light, design: .rounded))
+                .multilineTextAlignment(.center)
+            Text("Connectez votre premier compte Gmail")
+                .font(.system(size: 17, weight: .medium)).multilineTextAlignment(.center)
+            Text("Retrouvez vos messages ici, puis ajoutez vos autres comptes quand vous le souhaitez.")
+                .font(.system(size: 13)).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            Button(action: connect) {
+                Label("Connecter mon premier compte Gmail", systemImage: "plus.circle.fill")
+                    .font(.system(size: 13, weight: .semibold)).padding(.horizontal, 10).padding(.vertical, 7)
+            }.buttonStyle(.borderedProminent).controlSize(.large)
+            Text("La connexion s’effectue sur la page Google dans Inboxy.")
+                .font(.system(size: 11)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }.padding(32).frame(maxWidth: 480).frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

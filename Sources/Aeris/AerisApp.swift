@@ -73,7 +73,7 @@ import CoreServices
         let id = response.notification.request.content.userInfo["accountID"] as? String
         DispatchQueue.main.async { [weak self] in
             if let id, let uuid = UUID(uuidString: id), let model = self?.model, let account = model.accounts.first(where: { $0.id == uuid }) {
-                if model.demo { model.changeDemo(false) }; model.select(account)
+                model.select(account)
             }
             NSApp.activate(ignoringOtherApps: true)
             NSApp.windows.first(where: { $0.canBecomeMain })?.makeKeyAndOrderFront(nil)
@@ -113,7 +113,6 @@ import CoreServices
                     Button("Taille réelle du contenu") { model.resetZoom() }.keyboardShortcut("0", modifiers: .command).disabled(!model.canZoom)
                     Divider()
                     Button("Actualiser les messages") { model.refresh() }.keyboardShortcut("r")
-                    Button(model.demo ? "Afficher mes comptes" : "Explorer la démonstration") { model.changeDemo(!model.demo) }
                 }
             }
         Settings { AerisSettingsView().environmentObject(model).preferredColorScheme(model.scheme) }
