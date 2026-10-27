@@ -113,6 +113,7 @@ struct AccountSwitcherView: View {
 }
 
 struct AerisSettingsView: View {
+    @ViewState<BackupTransferMode?> private var backupMode: BackupTransferMode?
     @EnvironmentObject var model: AppModel
     @ViewState<UUID?> private var editID: UUID?
     @ViewState<MailAccount?> private var removeAccount: MailAccount?
@@ -124,6 +125,13 @@ struct AerisSettingsView: View {
             Form {
                 Section("Votre espace") {
                     Picker("Apparence", selection: $model.appearance) { Text("Automatique").tag("system"); Text("Claire").tag("light"); Text("Sombre").tag("dark") }
+                }
+                Section("Sauvegarde et restauration") {
+                    HStack {
+                        Button("Sauvegarder mes comptes…") { backupMode = .export }.disabled(model.accounts.isEmpty)
+                        Button("Restaurer mes comptes…") { backupMode = .restore }
+                    }
+                    Text("Fichier protégé par mot de passe, avec vos comptes et leurs sessions transférables. Google peut demander une nouvelle connexion sur un autre Mac.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Notifications") {
                     HStack { Text(model.notificationStatus); Spacer(); Button("Autoriser les notifications") { Task { await model.requestNotifications() } } }
@@ -165,11 +173,123 @@ struct AerisSettingsView: View {
                     } else { Text("Sélectionnez un compte connecté. Pour en ajouter un, utilisez + dans la fenêtre principale.").foregroundStyle(.secondary) }
                 }.padding(20).frame(maxWidth: .infinity)
             }.tabItem { Label("Comptes", systemImage: "person.2") }
-        }.frame(width: 700, height: 570).tint(Palette.accent)
+        }.frame(width: 700, height: 620).tint(Palette.accent)
+            .sheet(item: $backupMode) { mode in AccountBackupSheet(mode: mode).environmentObject(model) }
             .onChange(of: editID) { _, id in if let account = model.accounts.first(where: { $0.id == id }) { accountName = account.name; accountGroup = account.group; accountNotifications = account.notifications } }
             .alert("Retirer ce compte ?", isPresented: Binding(get: { removeAccount != nil }, set: { if !$0 { removeAccount = nil } })) {
                 Button("Annuler", role: .cancel) { removeAccount = nil }
                 Button("Révoquer et retirer", role: .destructive) { if let account = removeAccount { Task { await model.remove(account) } }; removeAccount = nil }
             } message: { Text(removeAccount?.usesWeb == true ? "Le profil local et sa session web seront supprimés. Vos messages dans Gmail seront conservés." : "L’autorisation Google et les données locales de ce compte seront retirées. Vos messages dans Gmail seront conservés.") }
+    }
+}
+
+enum BackupTransferMode: String, Identifiable {
+    case export, restore
+    var id: String { rawValue }
+}
+struct AccountBackupSheet: View {
+    let mode: BackupTransferMode
+    @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    @ViewState private var password = ""
+    @ViewState private var confirmation = ""
+    @ViewState private var busy = false
+    @ViewState private var status = ""
+    @ViewState private var preview: AccountBackup?
+    @ViewState private var completed = false
+    private let backupType = UTType(exportedAs: "fr.inboxy.backup", conformingTo: .data)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Label(mode == .export ? "Sauvegarder mes comptes" : "Restaurer mes comptes", systemImage: "externaldrive.badge.timemachine")
+                .font(.system(size: 21, weight: .semibold))
+            Text(mode == .export
+                 ? "Le fichier contient des accès à vos comptes. Choisissez un mot de passe dédié à cette sauvegarde, distinct de votre mot de passe Gmail. Inboxy ne le mémorise pas."
+                 : "Saisissez le mot de passe choisi lors de la création de la sauvegarde. Le fichier contient des accès à vos comptes ; gardez-le privé.")
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+            if !completed && preview == nil {
+                SecureField(mode == .export ? "Mot de passe de sauvegarde · 8 caractères minimum" : "Mot de passe du fichier de sauvegarde", text: $password)
+                if mode == .export { SecureField("Confirmer le mot de passe de sauvegarde", text: $confirmation) }
+            }
+            if let backup = preview, !completed {
+                let newProfiles = backup.newProfiles(existing: model.accounts)
+                Text("\(backup.profiles.count) compte(s) dans la sauvegarde · \(newProfiles.count) à ajouter.").font(.system(size: 13, weight: .medium))
+                Text("Les comptes déjà présents seront conservés et ne seront pas remplacés.").font(.caption).foregroundStyle(.secondary)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(newProfiles, id: \.account.id) { profile in Text(profile.account.name + " · " + profile.account.email).font(.system(size: 11)) }
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                }.frame(maxHeight: 120)
+            }
+            Text("Les cookies de connexion sont transférés. Le stockage local est transféré si les deux Mac utilisent macOS 26 ou plus. Google peut exiger une vérification ou une reconnexion ; les messages eux-mêmes ne sont pas une sauvegarde hors ligne.")
+                .font(.caption).foregroundStyle(.secondary)
+            if !status.isEmpty { Text(status).font(.system(size: 12)).textSelection(.enabled).id(status) }
+            HStack {
+                if busy { ProgressView().controlSize(.small) }
+                Spacer()
+                Button(completed ? "Fermer" : "Annuler") { dismiss() }.disabled(busy)
+                if !completed {
+                    if let backup = preview {
+                        Button("Restaurer les comptes") { restore(backup) }
+                            .disabled(busy || backup.newProfiles(existing: model.accounts).isEmpty)
+                            .buttonStyle(.borderedProminent)
+                    } else {
+                        Button(mode == .export ? "Choisir où sauvegarder…" : "Choisir une sauvegarde…") { chooseFile() }
+                            .disabled(busy || (mode == .export ? password.count < 8 || password != confirmation : password.isEmpty))
+                            .buttonStyle(.borderedProminent)
+                    }
+                }
+            }
+        }.textFieldStyle(.roundedBorder).padding(26).frame(width: 570).tint(Palette.accent)
+            .onDisappear { password = ""; confirmation = ""; preview = nil }
+    }
+    private func chooseFile() {
+        status = ""
+        if mode == .export {
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [backupType]
+            panel.nameFieldStringValue = "Inboxy-comptes-" + Date().formatted(.iso8601.year().month().day().dateSeparator(.dash)) + ".inboxybackup"
+            guard panel.runModal() == .OK, let url = panel.url else { return }
+            busy = true; status = "Préparation de la sauvegarde chiffrée…"
+            let secret = password
+            Task {
+                do {
+                    let backup = try await AccountBackupTransfer.capture(model.accounts)
+                    let data = try await Task.detached(priority: .userInitiated) { try BackupArchive.encrypt(backup, password: secret) }.value
+                    try data.write(to: url, options: .atomic)
+                    try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+                    status = "\(backup.profiles.count) compte(s) sauvegardé(s). Copiez ce fichier sur l’autre Mac, puis utilisez Restaurer mes comptes. Gardez son mot de passe séparément."
+                    completed = true; password = ""; confirmation = ""
+                } catch { status = error.localizedDescription }
+                busy = false
+            }
+        } else {
+            let panel = NSOpenPanel()
+            panel.allowedContentTypes = [backupType]; panel.allowsMultipleSelection = false
+            guard panel.runModal() == .OK, let url = panel.url else { return }
+            busy = true; status = "Lecture de la sauvegarde…"
+            let secret = password
+            Task {
+                let access = url.startAccessingSecurityScopedResource()
+                defer { if access { url.stopAccessingSecurityScopedResource() }; busy = false }
+                do {
+                    let handle = try FileHandle(forReadingFrom: url)
+                    defer { try? handle.close() }
+                    let data = try handle.read(upToCount: BackupArchive.maximumSize + 1) ?? Data()
+                    preview = try await Task.detached(priority: .userInitiated) { try BackupArchive.decrypt(data, password: secret) }.value
+                    password = ""; status = "Sauvegarde déverrouillée. Vérifiez les comptes à ajouter avant de restaurer."
+                } catch { status = error.localizedDescription }
+            }
+        }
+    }
+    private func restore(_ backup: AccountBackup) {
+        busy = true; status = "Restauration des comptes et des sessions…"
+        Task {
+            do {
+                let count = try await model.restoreBackup(backup)
+                status = "\(count) compte(s) restauré(s). Ouvrez chaque boîte pour vérifier la session Google. Une reconnexion peut rester nécessaire."
+                completed = true; preview = nil
+            } catch { status = "La restauration n’a pas abouti. " + error.localizedDescription }
+            busy = false
+        }
     }
 }

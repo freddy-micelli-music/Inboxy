@@ -276,3 +276,33 @@ enum AppUpdateChecker {
         return try offer(from: data, currentVersion: currentVersion)
     }
 }
+
+// Three independently resizable sidebar panels. Weights preserve the user's proportions.
+enum SidebarPanelLayout {
+    static let defaults: [Double] = [0.30, 0.47, 0.23]
+    static let minima: [Double] = [55, 135, 45]
+    static func validWeights(_ values: [Double]) -> [Double] {
+        guard values.count == 3, values.allSatisfy({ $0.isFinite && $0 > 0 && $0 <= 1 }), values.reduce(0, +) > 0 else { return defaults }
+        let sum = values.reduce(0, +)
+        return values.map { $0 / sum }
+    }
+    static func sizes(available: Double, weights: [Double]) -> [Double] {
+        guard available.isFinite && available > 0 else { return [0, 0, 0] }
+        let lowerTotal = minima.reduce(0, +)
+        if available < lowerTotal { return minima.map { available * $0 / lowerTotal } }
+        let weights = validWeights(weights)
+        var result = [Double](repeating: 0, count: 3)
+        var remaining = available
+        var active = Set(0..<3)
+        while !active.isEmpty {
+            let sum = active.reduce(0.0) { $0 + weights[$1] }
+            let pinned = active.filter { remaining * weights[$0] / sum < minima[$0] }
+            if pinned.isEmpty {
+                for index in active { result[index] = remaining * weights[index] / sum }
+                break
+            }
+            for index in pinned { result[index] = minima[index]; remaining -= minima[index]; active.remove(index) }
+        }
+        return result
+    }
+}

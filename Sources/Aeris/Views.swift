@@ -387,49 +387,43 @@ struct SidebarView: View {
                 HStack { Image(systemName: "square.and.pencil"); Text("Nouveau message").font(.system(size: 12, weight: .semibold)); Spacer(); Text("⌘N").font(.system(size: 10)).opacity(0.65) }
                     .padding(13).background(Palette.accent, in: RoundedRectangle(cornerRadius: 10))
             }.buttonStyle(.plain).padding(.horizontal, 18).padding(.bottom, 23)
-            ForEach(MailFolder.allCases) { folder in
-                Button { model.openFolder(folder) } label: {
-                    HStack(spacing: 11) {
-                        Image(systemName: folder.symbol).frame(width: 18)
-                        Text(folder.rawValue).font(.system(size: 12, weight: model.folderSelected(folder) ? .semibold : .regular))
-                        Spacer()
-                        if folder == .inbox { Text(model.selectedInboxCount.map(String.init) ?? "—").font(.system(size: 10, weight: .medium, design: .rounded)).foregroundStyle(.white.opacity(0.6)) }
-                    }.foregroundStyle(model.folderSelected(folder) ? .white : .white.opacity(0.57))
-                        .padding(.horizontal, 13).padding(.vertical, 10)
-                        .background(model.folderSelected(folder) ? .white.opacity(0.075) : .clear, in: RoundedRectangle(cornerRadius: 8))
-                }.buttonStyle(.plain)
-                    .overlay(alignment: .trailing) {
-                        if folder == .trash { gmailNavigationButton.padding(.trailing, 7) }
-                    }
-                    .padding(.horizontal, 16)
-            }
-            if model.gmailFoldersExpanded && model.usingWeb {
-                extraGmailFolders.padding(.horizontal, 18).padding(.top, 8)
-            }
-            Rectangle().fill(.white.opacity(0.08)).frame(height: 1).padding(.horizontal, 23).padding(.vertical, 20)
-            HStack {
-                Text("VOS COMPTES").font(.system(size: 9, weight: .semibold)).tracking(1.5).foregroundStyle(.white.opacity(0.45))
-                Text("\(model.visibleAccounts.count)").font(.system(size: 9, weight: .semibold)).foregroundStyle(Palette.accent).padding(.horizontal, 6).padding(.vertical, 3).background(Palette.accent.opacity(0.13), in: Capsule())
-                Spacer()
-                Button { model.showAdd = true } label: { Image(systemName: "plus").font(.system(size: 13)) }.buttonStyle(.plain).help("Ajouter un compte · ⌘⇧N")
-            }.padding(.horizontal, 24).padding(.bottom, 14)
-            HStack(spacing: 7) {
-                Image(systemName: "magnifyingglass").font(.system(size: 10))
-                TextField("Rechercher un compte", text: $model.accountSearch).textFieldStyle(.plain).font(.system(size: 11))
-            }.foregroundStyle(.white.opacity(0.5)).padding(10).background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 7)).padding(.horizontal, 20)
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 4) {
-                    ForEach(["Travail", "Personnel"], id: \.self) { group in
-                        let accounts = model.filteredAccounts.filter { $0.group == group }
-                        if !accounts.isEmpty {
-                            Text(group.uppercased()).font(.system(size: 8, weight: .medium)).tracking(1.5).foregroundStyle(.white.opacity(0.3)).padding(.leading, 13).padding(.top, 17).padding(.bottom, 5)
-                            ForEach(accounts) { account in
-                                accountRow(account)
+            ResizableSidebarPanels(
+                folders: AnyView(ScrollView { VStack(alignment: .leading, spacing: 0) {
+                    ForEach(MailFolder.allCases) { folder in
+                        Button { model.openFolder(folder) } label: {
+                            HStack(spacing: 11) {
+                                Image(systemName: folder.symbol).frame(width: 18)
+                                Text(folder.rawValue).font(.system(size: 12, weight: model.folderSelected(folder) ? .semibold : .regular))
+                                Spacer()
+                                if folder == .inbox { Text(model.selectedInboxCount.map(String.init) ?? "—").font(.system(size: 10, weight: .medium, design: .rounded)).foregroundStyle(.white.opacity(0.6)) }
+                            }.foregroundStyle(model.folderSelected(folder) ? .white : .white.opacity(0.57))
+                                .padding(.horizontal, 13).padding(.vertical, 10)
+                                .background(model.folderSelected(folder) ? .white.opacity(0.075) : .clear, in: RoundedRectangle(cornerRadius: 8))
+                        }.buttonStyle(.plain)
+                            .overlay(alignment: .trailing) {
+                                if folder == .trash { gmailNavigationButton.padding(.trailing, 7) }
                             }
-                        }
+                            .padding(.horizontal, 16)
                     }
-                }.padding(.horizontal, 13).padding(.bottom, 14)
-            }
+                    if model.gmailFoldersExpanded && model.usingWeb {
+                        extraGmailFolders.padding(.horizontal, 18).padding(.top, 8)
+                    }
+                }.padding(.bottom, 6) }.environmentObject(model).environment(\.colorScheme, .dark)),
+                work: AnyView(VStack(alignment: .leading, spacing: 0) {
+                    HStack {
+                        Text("VOS COMPTES").font(.system(size: 9, weight: .semibold)).tracking(1.5).foregroundStyle(.white.opacity(0.45))
+                        Text("\(model.visibleAccounts.count)").font(.system(size: 9, weight: .semibold)).foregroundStyle(Palette.accent).padding(.horizontal, 6).padding(.vertical, 3).background(Palette.accent.opacity(0.13), in: Capsule())
+                        Spacer()
+                        Button { model.showAdd = true } label: { Image(systemName: "plus").font(.system(size: 13)) }.buttonStyle(.plain).help("Ajouter un compte · ⌘⇧N")
+                    }.padding(.horizontal, 24).padding(.bottom, 14)
+                    HStack(spacing: 7) {
+                        Image(systemName: "magnifyingglass").font(.system(size: 10))
+                        TextField("Rechercher un compte", text: $model.accountSearch).textFieldStyle(.plain).font(.system(size: 11))
+                    }.foregroundStyle(.white.opacity(0.5)).padding(10).background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 7)).padding(.horizontal, 20)
+                    accountGroup("Travail")
+                }.environmentObject(model).environment(\.colorScheme, .dark)),
+                personal: AnyView(accountGroup("Personnel").environmentObject(model).environment(\.colorScheme, .dark))
+            )
             VStack(spacing: 12) {
                 Rectangle().fill(.white.opacity(0.08)).frame(height: 1)
                 HStack {
@@ -447,6 +441,17 @@ struct SidebarView: View {
                 }
             }.padding(.horizontal, 23).padding(.bottom, 18)
         }.background(Palette.navigationBackground)
+    }
+    private func accountGroup(_ group: String) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(group.uppercased()).font(.system(size: 8, weight: .medium)).tracking(1.5)
+                .foregroundStyle(.white.opacity(0.4)).padding(.leading, 26).padding(.top, 10).padding(.bottom, 7)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 4) {
+                    ForEach(model.filteredAccounts.filter { $0.group == group }) { account in accountRow(account) }
+                }.padding(.horizontal, 13).padding(.bottom, 10)
+            }
+        }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
     private var horizontalBar: some View {
         VStack(spacing: 10) {
@@ -872,5 +877,70 @@ struct FirstAccountWelcome: View {
             Text("La connexion s’effectue sur la page Google dans Inboxy.")
                 .font(.system(size: 11)).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }.padding(32).frame(maxWidth: 480).frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct ResizableSidebarPanels: NSViewRepresentable {
+    var folders: AnyView
+    var work: AnyView
+    var personal: AnyView
+    func makeNSView(context: Context) -> SidebarPanelSplit {
+        let split = SidebarPanelSplit()
+        for view in [folders, work, personal] {
+            let hosting = NSHostingView(rootView: view)
+            hosting.sizingOptions = []
+            split.addSubview(hosting)
+        }
+        return split
+    }
+    func updateNSView(_ split: SidebarPanelSplit, context: Context) {
+        for (index, view) in [folders, work, personal].enumerated() {
+            (split.subviews[index] as? NSHostingView<AnyView>)?.rootView = view
+        }
+    }
+}
+private final class SidebarPanelSplit: NSSplitView, NSSplitViewDelegate {
+    private var weights = SidebarPanelLayout.validWeights(UserDefaults.standard.array(forKey: "sidebarPanelWeights") as? [Double] ?? SidebarPanelLayout.defaults)
+    override var isFlipped: Bool { true }
+    override var dividerThickness: CGFloat { 8 }
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        isVertical = false; dividerStyle = .thin; delegate = self
+        setAccessibilityLabel("Dossiers Gmail, Travail et Personnel : panneaux redimensionnables")
+    }
+    convenience init() { self.init(frame: .zero) }
+    required init?(coder: NSCoder) { fatalError("init(coder:) n’est pas utilisé") }
+    override func resizeSubviews(withOldSize oldSize: NSSize) {
+        guard subviews.count == 3 else { return }
+        let sizes = SidebarPanelLayout.sizes(available: Double(max(0, bounds.height - dividerThickness * 2)), weights: weights)
+        var y: CGFloat = 0
+        for (index, view) in subviews.enumerated() {
+            view.frame = NSRect(x: 0, y: y, width: bounds.width, height: CGFloat(sizes[index]))
+            y += CGFloat(sizes[index]) + dividerThickness
+        }
+    }
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 {
+            weights = SidebarPanelLayout.defaults
+            resizeSubviews(withOldSize: bounds.size)
+        } else {
+            super.mouseDown(with: event)
+            let total = subviews.reduce(CGFloat(0)) { $0 + $1.frame.height }
+            if total > 0 { weights = SidebarPanelLayout.validWeights(subviews.map { Double($0.frame.height / total) }) }
+        }
+        UserDefaults.standard.set(weights, forKey: "sidebarPanelWeights")
+    }
+    override func drawDivider(in rect: NSRect) {
+        NSColor(srgbRed: 0.055, green: 0.095, blue: 0.09, alpha: 1).setFill()
+        rect.fill()
+        NSColor(srgbRed: 0.35, green: 0.65, blue: 0.58, alpha: 0.65).setFill()
+        NSBezierPath(roundedRect: NSRect(x: rect.midX - 18, y: rect.midY - 1.5, width: 36, height: 3), xRadius: 1.5, yRadius: 1.5).fill()
+    }
+    func splitView(_ splitView: NSSplitView, canCollapseSubview subview: NSView) -> Bool { false }
+    func splitView(_ splitView: NSSplitView, constrainSplitPosition proposedPosition: CGFloat, ofSubviewAt dividerIndex: Int) -> CGFloat {
+        guard dividerIndex >= 0 && dividerIndex < 2 else { return proposedPosition }
+        let low = subviews[dividerIndex].frame.minY + CGFloat(SidebarPanelLayout.minima[dividerIndex])
+        let high = subviews[dividerIndex + 1].frame.maxY - CGFloat(SidebarPanelLayout.minima[dividerIndex + 1]) - dividerThickness
+        return high >= low ? min(max(proposedPosition, low), high) : proposedPosition
     }
 }

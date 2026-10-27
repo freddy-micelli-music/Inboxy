@@ -134,6 +134,21 @@ import UserNotifications
         if case .available(let offer) = updateState { NSWorkspace.shared.open(offer.releaseURL) }
         else { Task { await checkForUpdates() } }
     }
+    func restoreBackup(_ backup: AccountBackup) async throws -> Int {
+        try backup.validate()
+        let candidates = backup.newProfiles(existing: accounts)
+        let restored = try await AccountBackupTransfer.restore(candidates) { imported in
+            let current = self.accounts
+            let existingEmails = Set(current.map { $0.email.lowercased() })
+            let accepted = imported.filter { !existingEmails.contains($0.email.lowercased()) }
+            do { try self.persistence.save(current + accepted) }
+            catch { try? self.persistence.save(current); throw error }
+            self.accounts = current + accepted
+            return accepted
+        }
+        if selectedID == nil { selectedID = restored.first?.id; load() }
+        return restored.count
+    }
     func select(_ account: MailAccount) {
         guard selectedID != account.id, !removing.contains(account.id) else { return }
         selectedID = account.id; search = ""; load()
