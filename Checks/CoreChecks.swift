@@ -9,6 +9,49 @@ import WebKit
             guard condition() else { throw AerisError.message("FAIL: " + description) }
             passed += 1; print("PASS: " + description)
         }
+        try check(ProgramVersion("0.3.10")! > ProgramVersion("v0.3.9")! && ProgramVersion("1.0.0")! > ProgramVersion("0.99.99")!, "Versions comparées numériquement, y compris après neuf correctifs")
+        try check(ProgramVersion("v0.3.7") == ProgramVersion("0.3.7"), "Préfixe de version GitHub normalisé")
+        try check(["0.3", "0.03.7", "0.3.7-beta", "0.3.7+build", " 0.3.7", "0.3.-7", "0.3.999999999999999999"].allSatisfy { ProgramVersion($0) == nil }, "Versions incomplètes, préversions et nombres invalides rejetés")
+        let updateTag = "v0.3.8"
+        let updatePage = "https://github.com/freddy-micelli-music/Inboxy/releases/tag/" + updateTag
+        let updateAsset = "Inboxy-0.3.8-macOS.zip"
+        let updateDownload = "https://github.com/freddy-micelli-music/Inboxy/releases/download/" + updateTag + "/" + updateAsset
+        let releaseFixture: [String: Any] = ["tag_name": updateTag, "html_url": updatePage, "draft": false, "prerelease": false, "assets": [["name": updateAsset, "state": "uploaded", "size": 1024, "browser_download_url": updateDownload]]]
+        let updateData = try JSONSerialization.data(withJSONObject: releaseFixture)
+        let offer = try AppUpdateChecker.offer(from: updateData, currentVersion: "0.3.7")
+        try check(offer?.version == "0.3.8" && offer?.releaseURL.absoluteString == updatePage, "Nouvelle version publiée avec installateur disponible et lien exact")
+        let sameVersion = try AppUpdateChecker.offer(from: updateData, currentVersion: "0.3.8")
+        let newerVersion = try AppUpdateChecker.offer(from: updateData, currentVersion: "0.4.0")
+        try check(sameVersion == nil && newerVersion == nil, "Version égale ou plus ancienne sans fausse mise à jour")
+        var invalidReleases: [[String: Any]] = []
+        for field in ["draft", "prerelease"] { var invalid = releaseFixture; invalid[field] = true; invalidReleases.append(invalid) }
+        var noInstaller = releaseFixture; noInstaller["assets"] = []; invalidReleases.append(noInstaller)
+        var wrongSite = releaseFixture; wrongSite["html_url"] = "https://github.com.evil.test/freddy-micelli-music/Inboxy/releases/tag/v0.3.8"; invalidReleases.append(wrongSite)
+        var wrongDownload = releaseFixture; wrongDownload["assets"] = [["name": updateAsset, "state": "uploaded", "size": 1024, "browser_download_url": "https://example.test/" + updateAsset]]; invalidReleases.append(wrongDownload)
+        var refusedUpdates = 0
+        for fixture in invalidReleases {
+            do { _ = try AppUpdateChecker.offer(from: JSONSerialization.data(withJSONObject: fixture), currentVersion: "0.3.7") }
+            catch { refusedUpdates += 1 }
+        }
+        try check(refusedUpdates == invalidReleases.count, "Brouillons, préversions, installateur absent et liens externes rejetés")
+        var badJSONRejected = false
+        do { _ = try AppUpdateChecker.offer(from: Data("not JSON".utf8), currentVersion: "0.3.7") } catch { badJSONRejected = true }
+        try check(badJSONRejected, "Réponse de mise à jour illisible distinguée d’une application à jour")
+        let updateConfiguration = URLSessionConfiguration.ephemeral
+        updateConfiguration.protocolClasses = [UpdateCheckProtocol.self]
+        let updateSession = URLSession(configuration: updateConfiguration)
+        UpdateCheckProtocol.responseCode = 200; UpdateCheckProtocol.responseData = updateData
+        let fetchedOffer = try await AppUpdateChecker.latest(currentVersion: "0.3.7", session: updateSession)
+        try check(fetchedOffer == offer && UpdateCheckProtocol.lastRequest?.url == AppUpdateChecker.endpoint && UpdateCheckProtocol.lastRequest?.value(forHTTPHeaderField: "Authorization") == nil && UpdateCheckProtocol.lastRequest?.httpBody == nil, "Vérification publique sans authentification ni donnée de compte")
+        UpdateCheckProtocol.responseCode = 403
+        var rateLimitRejected = false
+        do { _ = try await AppUpdateChecker.latest(currentVersion: "0.3.7", session: updateSession) } catch { rateLimitRejected = true }
+        try check(rateLimitRejected, "Limite GitHub traitée comme indisponibilité, pas comme version à jour")
+        UpdateCheckProtocol.networkFailure = true
+        var offlineRejected = false
+        do { _ = try await AppUpdateChecker.latest(currentVersion: "0.3.7", session: updateSession) } catch { offlineRejected = true }
+        try check(offlineRejected, "Absence de réseau sans fausse annonce de version à jour")
+        updateSession.invalidateAndCancel()
         try check(OAuthTools.challenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk") == "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM", "PKCE S256 — vecteur RFC 7636")
         try check(WebSessions.boundedZoom(0.01) == 0.5 && WebSessions.boundedZoom(9) == 2 && WebSessions.boundedZoom(.nan) == 1, "Zoom borné entre 50 et 200 pour cent, valeur invalide neutralisée")
         try check(WebSessions.boundedZoom(1.1 - 0.1) == 1, "Zoom sans dérive des décimales")
@@ -164,4 +207,22 @@ import WebKit
         try await WKWebsiteDataStore.remove(forIdentifier: secondID)
         print("\(passed) contrôles réussis.")
     }
+}
+
+private final class UpdateCheckProtocol: URLProtocol {
+    static var responseCode = 200
+    static var responseData = Data()
+    static var networkFailure = false
+    static var lastRequest: URLRequest?
+    override class func canInit(with request: URLRequest) -> Bool { request.url == AppUpdateChecker.endpoint }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        Self.lastRequest = request
+        if Self.networkFailure { client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet)); return }
+        let response = HTTPURLResponse(url: request.url!, statusCode: Self.responseCode, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Self.responseData)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
 }
