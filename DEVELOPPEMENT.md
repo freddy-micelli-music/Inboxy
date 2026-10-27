@@ -8,7 +8,7 @@ Le nom visible et le produit sont Inboxy. Le projet de développement reste `Aer
 
 Projet Xcode SwiftUI + WebKit pour réunir des comptes Gmail dans des profils indépendants. Le parcours principal est désormais : **adresse e-mail → profil local → Gmail dans Inboxy**, sans ouvrir le navigateur habituel pour ce parcours.
 
-**État : prototype.** Deux comptes réels connectés par l’utilisateur ont été vérifiés à l’écran : leurs boîtes Gmail sont distinctes et leurs sessions se restaurent après relancement. Le correctif d’identification WebKit supprime le bandeau de navigateur incompatible. Les trames internes et redirections Google régionales sont autorisées ; un échec de vérification des cookies peut déclencher une seule reprise depuis Gmail. Un bouton Réessayer reprend ensuite la navigation dans le même stockage de compte. Les autres comptes et parcours de connexion restent à tester. Une adresse saisie n’est pas une identité authentifiée. La démonstration contient 36 comptes fictifs.
+**État : prototype.** Deux comptes réels connectés par l’utilisateur ont été vérifiés à l’écran : leurs boîtes Gmail sont distinctes et leurs sessions se restaurent après relancement. Le correctif d’identification WebKit supprime le bandeau de navigateur incompatible. Les trames internes et redirections Google régionales sont autorisées ; un échec de vérification des cookies peut déclencher une seule reprise depuis Gmail. Un bouton Réessayer reprend ensuite la navigation dans le même stockage de compte. Les autres comptes et parcours de connexion restent à tester. Une adresse saisie n’est pas une identité authentifiée. Le premier lancement propose de connecter son premier compte Gmail, sans compte ni message fictif.
 
 ## Lancer avec Xcode
 
@@ -68,8 +68,7 @@ Le zoom utilise l’API publique [WKWebView.pageZoom](https://developer.apple.co
 - Les dossiers Réception, Non lus, Favoris et Envoyés naviguent dans Gmail pour un profil WEB, même si le bouton était déjà sélectionné. La sélection native suit aussi les changements de dossier effectués directement dans Gmail.
 - Le compteur Réception concerne le compte sélectionné. Il suit le compteur Gmail de la vue chargée ; une valeur inconnue est affichée « — ». Une pastille ronde remplace les initiales : rouge avec le nombre de non lus, grise à zéro, « — » ou indicateur de progression avant le premier relevé. Le Dock additionne les derniers compteurs connus.
 - Dans **Vos comptes**, cliquer sur **…** à droite d’un compte, ou faire un clic droit : **Renommer…** ouvre un champ de nom ; **Supprimer le compte…** ouvre une confirmation. Le nom est propre à Aeris et sauvegardé entre les lancements. La suppression retire le profil et sa session locale sans supprimer le compte Google ni les messages Gmail.
-- **⌘, → Comptes** permet aussi de modifier le nom et le groupe, ou de retirer un profil. Pendant une suppression, sa ligne est temporairement désactivée. Les comptes de démonstration peuvent être renommés et retirés pour la session de démo.
-- 36 comptes fictifs pour explorer l’interface de lecture native sans identifiants.
+- **⌘, → Comptes** permet aussi de modifier le nom et le groupe, ou de retirer un profil. Pendant une suppression, sa ligne est temporairement désactivée.
 
 ## Méthode API optionnelle
 
@@ -87,13 +86,13 @@ La lecture native est en lecture seule, par pages de 25 messages, avec corps tex
 
 - [VALIDATION.md](VALIDATION.md) : contrôles réussis et limites des essais.
 - [ARCHITECTURE.md](ARCHITECTURE.md) : séparation des profils, Google et Mailplane, stockage et étapes restantes.
-- `./check.sh` : 76 contrôles, dont encodages OAuth/MIME, compatibilité des anciens comptes et persistance de 45 profils WEB.
+- `./check.sh` : 78 contrôles, dont encodages OAuth/MIME, compatibilité des anciens comptes et persistance de 45 profils WEB.
 - `./check.sh --webkit` : contrôle supplémentaire de cookies dans deux profils de test, à lancer dans un Terminal normal. Non validé dans l’environnement restreint de l’agent.
 - `./build.sh` : méthode de compilation supplémentaire ; le projet Xcode reste le parcours habituel.
 
 ### Classer les comptes
 
-Glissez un compte par son nom ou son avatar vers la position souhaitée. Une ligne verte indique l’insertion avant ou après la ligne visée. Un dépôt dans l’autre groupe déplace aussi le compte entre Travail et Personnel. L’ordre des comptes réels est conservé au relancement ; la démonstration reste temporaire.
+Glissez un compte par son nom ou son avatar vers la position souhaitée. Une ligne verte indique l’insertion avant ou après la ligne visée. Un dépôt dans l’autre groupe déplace aussi le compte entre Travail et Personnel. L’ordre des comptes réels est conservé au relancement.
 
 ## Version 0.2.0 — 24 octobre 2026
 
@@ -131,3 +130,9 @@ La signature près du logo est désormais **LA BOITE À GMAIL**, dans les dispos
 Un clic sur la nouvelle version ouvre sa page GitHub dans le navigateur ; l’installation reste manuelle. Une panne réseau, une limite de requêtes ou une réponse invalide affiche « À vérifier », sans prétendre que le logiciel est à jour. Les brouillons, préversions et liens de téléchargement hors du dépôt Inboxy sont refusés. Le numéro de version d’une publication doit suivre le format `vMAJEUR.MINEUR.CORRECTIF`, avec un fichier `Inboxy-MAJEUR.MINEUR.CORRECTIF-macOS.zip`.
 
 Ce mécanisme signale les nouvelles versions ; il ne télécharge ni n’installe du code automatiquement. L’application reste signée localement et non notariée par Apple.
+
+## Version 0.3.8 — premier compte Gmail (27 octobre 2026)
+
+Une nouvelle installation affiche **Bienvenue dans Inboxy**, sans compte ni message fictif. Le bouton **Connecter mon premier compte Gmail** ouvre le formulaire de connexion intégrée existant. Aucun compte n’est ajouté avant la saisie et la validation de l’utilisateur. Le menu de démonstration et les données d’exemple ont été retirés du programme. L’écran d’accueil revient également si l’utilisateur retire son dernier compte.
+
+Les installations existantes conservent leurs profils, leur ordre et leurs UUID. Le champ historique `isDemo` reste uniquement pour décoder les anciens fichiers et ignorer un éventuel profil fictif enregistré dans ceux-ci, sans effacer ni réécrire le fichier à la lecture. Les sessions Google sont conservées.

@@ -8,7 +8,7 @@ Application macOS native pour réunir et organiser plusieurs comptes Gmail dans 
 
 ## Télécharger et installer
 
-[Télécharger Inboxy 0.3.7 pour macOS](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.7/Inboxy-0.3.7-macOS.zip)
+[Télécharger Inboxy 0.3.8 pour macOS](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.8/Inboxy-0.3.8-macOS.zip)
 
 macOS 14 minimum. Application universelle pour **Apple Silicon et Intel**.
 
@@ -17,6 +17,10 @@ macOS 14 minimum. Application universelle pour **Apple Silicon et Intel**.
 3. Glisser **Inboxy.app** dans **Applications** et remplacer l’ancienne version si nécessaire.
 
 Cette version est un prototype avec signature locale, sans notarisation Apple. Le téléchargement ne contient aucun compte Gmail préconfiguré. Les profils existants restent stockés localement sur le Mac.
+
+## Premier lancement
+
+Inboxy démarre sans compte ni message fictif. Cliquer sur **Connecter mon premier compte Gmail**, saisir son adresse puis effectuer la connexion sur la page Google dans Inboxy. Les comptes déjà enregistrés sur le Mac sont conservés lors d’une mise à jour.
 
 ## Fonctions
 

@@ -22,18 +22,18 @@ Le parcours API reste séparé : navigateur système → OAuth Desktop avec stat
 
 | Fichier | Rôle |
 | --- | --- |
-| `Models.swift` | Comptes, UUID stables, option `webOnly` compatible avec les anciens fichiers, validation de l’adresse, dépôt JSON et démo. |
+| `Models.swift` | Comptes, UUID stables, option `webOnly` compatible avec les anciens fichiers, validation de l’adresse, dépôt JSON et compatibilité des anciens profils. |
 | `AppModel.swift` | Création des profils WEB sans OAuth, navigation, persistance, lecture API et relevé borné de tous les compteurs. |
 | `WebSessions.swift` | Stockages WebKit par UUID, cache de trois vues, chargement et erreurs réseau, domaine affiché, navigation Gmail et contrôle des liens. |
 | `Settings.swift` | Ajout par adresse e-mail, méthode API optionnelle, sélecteur rapide, apparence et gestion des profils. |
-| `Views.swift` | Barre latérale, espace Gmail intégré, liste et lecteur de démonstration/API. |
+| `Views.swift` | Barre latérale, espace Gmail intégré, écran de premier lancement, liste et lecteur API. |
 | `GoogleAuth.swift` | Méthode API : loopback limité à `127.0.0.1`, PKCE S256, state aléatoire, échange de code et Trousseau. |
 | `GmailAPI.swift` | Lecture, pagination, parsing MIME, renouvellement par compte et révocation. |
 | `AerisApp.swift` | Fenêtre, menus, raccourcis et notifications API. |
 
 ## Stockage et identité
 
-`~/Library/Application Support/Aeris/accounts.json` conserve noms, adresses, groupes, couleurs, options et UUID, avec écriture atomique et permissions `0600`. La démo n’y est pas enregistrée. Les cookies des profils WEB sont gérés par les stockages persistants de WebKit, sans copie manuelle.
+`~/Library/Application Support/Aeris/accounts.json` conserve noms, adresses, groupes, couleurs, options et UUID, avec écriture atomique et permissions `0600`. Les éventuels anciens profils marqués fictifs sont exclus à la lecture et à l’écriture. Les cookies des profils WEB sont gérés par les stockages persistants de WebKit, sans copie manuelle.
 
 Les comptes API utilisent des entrées de Trousseau distinctes, service `fr.aeris.mail.oauth`, clé UUID. L’API utilise une URLSession éphémère sans cookies ni cache disque. Les messages natifs restent en mémoire. L’ancien format sans `webOnly` reste interprété comme un compte API.
 
@@ -84,7 +84,7 @@ Ces compteurs restent des métadonnées de l’interface Gmail et dépendent de 
 
 ## Relevé périodique des comptes et pastilles
 
-`AppModel.pollBadges()` parcourt les comptes réels, avec deux tâches simultanées au maximum et sans chevauchement de cycles. Le délai de 60 secondes est mesuré depuis le début du cycle précédent. Les profils WEB utilisent `WebSessions.checkUnread` et une `GmailUnreadProbe` temporaire ; les profils API lisent leur label INBOX. Une génération invalide les résultats lors du basculement vers la démo. Les retraits annulent la sonde associée et ignorent ses résultats.
+`AppModel.pollBadges()` parcourt les comptes réels, avec deux tâches simultanées au maximum et sans chevauchement de cycles. Le délai de 60 secondes est mesuré depuis le début du cycle précédent. Les profils WEB utilisent `WebSessions.checkUnread` et une `GmailUnreadProbe` temporaire ; les profils API lisent leur label INBOX. Une génération permet d’invalider les résultats devenus obsolètes. Les retraits annulent la sonde associée et ignorent ses résultats.
 
 Chaque sonde WKWebView réutilise uniquement `WKWebsiteDataStore(forIdentifier: account.id)`, le même nom de compatibilité Safari et le même tracker de métadonnées. Elle charge la réception sans entrer dans un message, sans héberger ni modifier la vue visible et sans accéder aux champs de connexion. Les cookies restent dans WebKit : aucun transfert vers URLSession, un autre navigateur ou un dépôt applicatif. Le résultat, une erreur ou l’expiration de 20 secondes détache les handlers/délégués et libère la vue temporaire. Les sondes ne figurent pas dans le cache des trois vues interactives.
 

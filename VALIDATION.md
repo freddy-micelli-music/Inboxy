@@ -7,7 +7,7 @@ Date : 22 octobre 2026. Machine de compilation : Mac Apple Silicon ; Xcode 27.1 
 - Compilation du projet `Aeris.xcodeproj`, schéma partagé `Aeris`, configuration Debug : réussie.
 - Compilation du même projet en Release avec signature locale : réussie pour arm64 et x86_64 (binaire universel). Vérification de la signature et des fichiers de projet : réussie.
 - Script de compilation directe fourni en complément : réussi avant les dernières finitions ; le livrable final est issu du projet Xcode.
-- Contrôles automatisés exécutés : **76 réussis**.
+- Contrôles automatisés exécutés : **78 réussis**.
 
 Les contrôles couvrent : vecteur PKCE S256 de la RFC 7636 ; longueur du vérificateur cryptographique ; code OAuth encodé ; refus d’un state incorrect, d’un mauvais chemin, d’un state dupliqué, d’un consentement refusé ou d’un code absent ; formulaire contenant `+`, `&`, `=` et Unicode ; aller-retour Base64URL ; MIME multipart avec texte et HTML ; en-têtes insensibles à la casse ; labels et date Gmail ; sauvegarde/restauration de 45 comptes avec conservation des UUID et exclusion des comptes de démonstration ; présence de 36 comptes fictifs ; rattachement des messages à leur compte.
 
@@ -173,3 +173,9 @@ Contrôle visuel dans Inboxy : signature « LA BOITE À GMAIL » près du logo ;
 Une petite application de vérification locale, séparée du livrable, réutilise la vue de production avec un état futur fictif 0.3.8 : variation de couleur du doré au vert observée sur deux captures, puis clic reçu par l’action du bouton. Le numéro fictif n’est pas publié ni injecté dans Inboxy. La même fenêtre a confirmé la vérification réelle et l’affichage neutre d’indisponibilité. La réduction des animations et la disposition horizontale sont prises en charge dans le code sans contrôle visuel spécifique de ces variantes.
 
 La vérification utilise l’API publique GitHub avec une session éphémère sans stockage de cookies ni identifiants. Le lien proposé est limité à la publication HTTPS du dépôt Inboxy et nécessite un installateur correspondant téléversé, non vide. Aucun téléchargement ni remplacement automatique de l’application ; l’ouverture du navigateur mène à la page de version. La disponibilité réseau et les limites de requêtes GitHub peuvent empêcher temporairement une vérification.
+
+## Version 0.3.8 — premier lancement sans démonstration (27 octobre 2026)
+
+Compilation Release universelle réussie, 78 contrôles automatisés réussis. Les deux contrôles portant uniquement sur la démonstration ont été remplacés par quatre scénarios : dépôt neuf vide ; modèle d’application neuf sans compte sélectionné, sans message et sans compteur fictif ; ancien profil fictif exclu sans réécriture du fichier ni perte des vrais comptes ; restauration de deux profils existants avec ordre et UUID identiques. Le dépôt de sauvegarde est injecté pour ces contrôles, qui utilisent exclusivement des dossiers temporaires. Les données d’exemple et le mode de démonstration ont été retirés du programme ; seul le marqueur historique de décodage reste pour compatibilité.
+
+Contrôle visuel avec une application de vérification séparée réutilisant ContentView et AppModel de production, avec un dépôt temporaire vide : compteur de comptes à zéro, écran Bienvenue dans Inboxy, bouton Connecter mon premier compte Gmail, absence de texte de démonstration. Un clic ouvre le formulaire avec le champ Adresse e-mail Google vide et le bouton Ouvrir Gmail dans Inboxy désactivé. Le formulaire a été fermé sans saisie ni création de compte. Aucun compte réel, cookie, mot de passe, message ou événement de l’utilisateur n’a été modifié. Le parcours Google après saisie d’identifiants reste à réaliser par l’utilisateur ; cette vérification porte sur l’accueil et l’ouverture du formulaire.
