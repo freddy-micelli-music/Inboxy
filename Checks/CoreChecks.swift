@@ -9,6 +9,57 @@ import WebKit
             guard condition() else { throw AerisError.message("FAIL: " + description) }
             passed += 1; print("PASS: " + description)
         }
+        let backupAccount = MailAccount(name: "Boîte à transférer", email: "transfer@example.test", group: "Travail", webOnly: true)
+        let sampleCookie = HTTPCookie(properties: [.name: "synthetic-session", .value: "test-cookie-never-a-real-session", .domain: ".example.test", .path: "/", .secure: "TRUE", HTTPCookiePropertyKey(rawValue: "HttpOnly"): "TRUE", .expires: Date().addingTimeInterval(3600)])!
+        let backupProfile = BackupProfile(account: backupAccount, cookies: [BackupCookie(sampleCookie)], localStorage: nil, credential: nil)
+        let sampleBackup = AccountBackup(profiles: [backupProfile])
+        let protectedBackup = try BackupArchive.encrypt(sampleBackup, password: "test-only-password")
+        let recoveredBackup = try BackupArchive.decrypt(protectedBackup, password: "test-only-password")
+        try check(recoveredBackup.profiles.first?.account == backupAccount && recoveredBackup.profiles.first?.cookies.first?.value == sampleCookie.value, "Sauvegarde chiffrée : comptes et session synthétique restaurés")
+        let recoveredCookie = try recoveredBackup.profiles[0].cookies[0].cookie()
+        try check(recoveredCookie.isSecure && recoveredCookie.isHTTPOnly && recoveredCookie.domain == sampleCookie.domain && recoveredCookie.expiresDate != nil, "Cookies sécurisés et HttpOnly conservés")
+        try check(protectedBackup.range(of: Data(backupAccount.email.utf8)) == nil && protectedBackup.range(of: Data(sampleCookie.value.utf8)) == nil, "Aucune adresse ni session lisible dans le fichier chiffré")
+        let secondProtectedBackup = try BackupArchive.encrypt(sampleBackup, password: "test-only-password")
+        try check(protectedBackup != secondProtectedBackup, "Sel et nonce aléatoires pour chaque sauvegarde")
+        var wrongPassword = false
+        do { _ = try BackupArchive.decrypt(protectedBackup, password: "wrong-password") } catch { wrongPassword = true }
+        try check(wrongPassword, "Mot de passe incorrect refusé sans restauration")
+        var modifiedEnvelope = try JSONSerialization.jsonObject(with: protectedBackup) as! [String: Any]
+        var modifiedSealed = Data(base64Encoded: modifiedEnvelope["sealed"] as! String)!
+        modifiedSealed[modifiedSealed.count / 2] ^= 1
+        modifiedEnvelope["sealed"] = modifiedSealed.base64EncodedString()
+        var modificationRejected = false
+        do { _ = try BackupArchive.decrypt(JSONSerialization.data(withJSONObject: modifiedEnvelope), password: "test-only-password") } catch { modificationRejected = true }
+        try check(modificationRejected, "Archive altérée rejetée par l’authentification du chiffrement")
+        var invalidBackupHeader = try JSONSerialization.jsonObject(with: protectedBackup) as! [String: Any]
+        invalidBackupHeader["rounds"] = Int.max
+        var invalidHeaderRejected = false
+        do { _ = try BackupArchive.decrypt(JSONSerialization.data(withJSONObject: invalidBackupHeader), password: "test-only-password") } catch { invalidHeaderRejected = true }
+        try check(invalidHeaderRejected, "Paramètres de dérivation inconnus refusés avant tout calcul")
+        var plainBackupRejected = false
+        do { _ = try BackupArchive.decrypt(JSONEncoder().encode(sampleBackup), password: "test-only-password") } catch { plainBackupRejected = true }
+        try check(plainBackupRejected, "Import non chiffré refusé")
+        var shortPasswordRejected = false
+        do { _ = try BackupArchive.encrypt(sampleBackup, password: "short") } catch { shortPasswordRejected = true }
+        try check(shortPasswordRejected, "Mot de passe de sauvegarde trop court refusé")
+        var duplicateBackupRejected = false
+        do { try AccountBackup(profiles: [backupProfile, backupProfile]).validate() } catch { duplicateBackupRejected = true }
+        try check(duplicateBackupRejected, "Profils dupliqués dans une sauvegarde rejetés")
+        var caseDuplicate = backupAccount; caseDuplicate.email = "TRANSFER@example.test"
+        try check(sampleBackup.newProfiles(existing: [caseDuplicate]).isEmpty && sampleBackup.newProfiles(existing: []).count == 1, "Fusion sans écraser un compte existant, adresse insensible à la casse")
+        var apiProfile = backupProfile
+        apiProfile.account.webOnly = false
+        apiProfile.credential = GoogleToken(accessToken: "synthetic-access", refreshToken: "synthetic-refresh", expiresAt: Date(), clientID: "synthetic.apps.googleusercontent.com", clientSecret: "synthetic-client")
+        let apiProtected = try BackupArchive.encrypt(AccountBackup(profiles: [apiProfile]), password: "test-only-password")
+        let apiRecovered = try BackupArchive.decrypt(apiProtected, password: "test-only-password")
+        try check(apiRecovered.profiles[0].credential?.refreshToken == "synthetic-refresh" && apiProtected.range(of: Data("synthetic-refresh".utf8)) == nil, "Jeton API synthétique chiffré et décodé sans exposition en clair")
+        let panelSizes = SidebarPanelLayout.sizes(available: 900, weights: [0.3, 0.47, 0.23])
+        try check(abs(panelSizes.reduce(0, +) - 900) < 0.001 && zip(panelSizes, SidebarPanelLayout.minima).allSatisfy { $0 >= $1 }, "Panneaux : hauteur totale et tailles minimales conservées")
+        let constrainedSizes = SidebarPanelLayout.sizes(available: 400, weights: [0.01, 0.98, 0.01])
+        try check(constrainedSizes[0] >= 55 && constrainedSizes[1] >= 135 && constrainedSizes[2] >= 45 && abs(constrainedSizes.reduce(0, +) - 400) < 0.001, "Réduction des blocs sans cacher le panneau Personnel ni les dossiers")
+        try check(SidebarPanelLayout.validWeights([.nan, 0, -1]) == SidebarPanelLayout.defaults && SidebarPanelLayout.sizes(available: .nan, weights: []).allSatisfy { $0 == 0 }, "Dimensions invalides neutralisées")
+        let smallSizes = SidebarPanelLayout.sizes(available: 100, weights: SidebarPanelLayout.defaults)
+        try check(smallSizes.allSatisfy { $0 >= 0 } && abs(smallSizes.reduce(0, +) - 100) < 0.001, "Très petite fenêtre sans débordement ni hauteur négative")
         try check(ProgramVersion("0.3.10")! > ProgramVersion("v0.3.9")! && ProgramVersion("1.0.0")! > ProgramVersion("0.99.99")!, "Versions comparées numériquement, y compris après neuf correctifs")
         try check(ProgramVersion("v0.3.7") == ProgramVersion("0.3.7"), "Préfixe de version GitHub normalisé")
         try check(["0.3", "0.03.7", "0.3.7-beta", "0.3.7+build", " 0.3.7", "0.3.-7", "0.3.999999999999999999"].allSatisfy { ProgramVersion($0) == nil }, "Versions incomplètes, préversions et nombres invalides rejetés")
