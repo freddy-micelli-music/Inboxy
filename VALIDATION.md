@@ -7,7 +7,7 @@ Date : 22 octobre 2026. Machine de compilation : Mac Apple Silicon ; Xcode 27.1 
 - Compilation du projet `Aeris.xcodeproj`, schéma partagé `Aeris`, configuration Debug : réussie.
 - Compilation du même projet en Release avec signature locale : réussie pour arm64 et x86_64 (binaire universel). Vérification de la signature et des fichiers de projet : réussie.
 - Script de compilation directe fourni en complément : réussi avant les dernières finitions ; le livrable final est issu du projet Xcode.
-- Contrôles automatisés exécutés : **66 réussis**.
+- Contrôles automatisés exécutés : **76 réussis**.
 
 Les contrôles couvrent : vecteur PKCE S256 de la RFC 7636 ; longueur du vérificateur cryptographique ; code OAuth encodé ; refus d’un state incorrect, d’un mauvais chemin, d’un state dupliqué, d’un consentement refusé ou d’un code absent ; formulaire contenant `+`, `&`, `=` et Unicode ; aller-retour Base64URL ; MIME multipart avec texte et HTML ; en-têtes insensibles à la casse ; labels et date Gmail ; sauvegarde/restauration de 45 comptes avec conservation des UUID et exclusion des comptes de démonstration ; présence de 36 comptes fictifs ; rattachement des messages à leur compte.
 
@@ -163,3 +163,13 @@ Contrôle réel de l’application : bandeau immédiatement après SwissTransfer
 Aucun événement créé, modifié ou supprimé, aucun message envoyé et aucun identifiant saisi. Les titres privés des rendez-vous ne sont pas consignés dans cette documentation. Les sondes temporaires de diagnostic ont été retirées du code et leur fichier local supprimé.
 
 Limites : lecture du planning chargé, sans pagination de tout le futur ni récupération des calendriers masqués. Le fuseau affiché par Google Agenda doit correspondre à celui du Mac ; les réglages de fuseau divergents n’ont pas été validés. Le renouvellement d’une minute est programmé pour le compte actif, mais un essai prolongé sur plusieurs heures n’a pas été réalisé. La pause au survol, le mode de réduction des animations et le bandeau sur deux lignes à faible largeur sont implémentés sans contrôle visuel spécifique de ces variantes. La structure du site Google peut nécessiter des adaptations ultérieures.
+
+## Version 0.3.7 — signature, numéro et vérification de mise à jour (27 octobre 2026)
+
+Compilation Release universelle réussie ; 76 contrôles automatiques passent. Les dix nouveaux contrôles couvrent la comparaison numérique (dont 0.3.10 après 0.3.9), la normalisation du préfixe v, le rejet des versions incomplètes/préversions, une publication avec installateur prêt, les versions égales ou antérieures, les brouillons et liens non conformes, le JSON illisible, une requête HTTP publique sans jeton ni corps, une réponse GitHub 403 et l’absence de réseau. Les derniers scénarios utilisent un transport URLProtocol contrôlé, sans publier de fausse version sur GitHub.
+
+Contrôle visuel dans Inboxy : signature « LA BOITE À GMAIL » près du logo ; bouton « Version 0.3.7 · À jour » sous le relevé des comptes ; 20 comptes retrouvés, navigation à droite et zoom 80 % conservés. La requête réelle de démarrage a abouti alors que la version publique était 0.3.6. Aucune modification de message ou d’événement n’a été effectuée.
+
+Une petite application de vérification locale, séparée du livrable, réutilise la vue de production avec un état futur fictif 0.3.8 : variation de couleur du doré au vert observée sur deux captures, puis clic reçu par l’action du bouton. Le numéro fictif n’est pas publié ni injecté dans Inboxy. La même fenêtre a confirmé la vérification réelle et l’affichage neutre d’indisponibilité. La réduction des animations et la disposition horizontale sont prises en charge dans le code sans contrôle visuel spécifique de ces variantes.
+
+La vérification utilise l’API publique GitHub avec une session éphémère sans stockage de cookies ni identifiants. Le lien proposé est limité à la publication HTTPS du dépôt Inboxy et nécessite un installateur correspondant téléversé, non vide. Aucun téléchargement ni remplacement automatique de l’application ; l’ouverture du navigateur mène à la page de version. La disponibilité réseau et les limites de requêtes GitHub peuvent empêcher temporairement une vérification.

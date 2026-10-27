@@ -8,7 +8,7 @@ Application macOS native pour réunir et organiser plusieurs comptes Gmail dans 
 
 ## Télécharger et installer
 
-[Télécharger Inboxy 0.3.6 pour macOS](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.6/Inboxy-0.3.6-macOS.zip)
+[Télécharger Inboxy 0.3.7 pour macOS](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.7/Inboxy-0.3.7-macOS.zip)
 
 macOS 14 minimum. Application universelle pour **Apple Silicon et Intel**.
 
@@ -25,6 +25,7 @@ Cette version est un prototype avec signature locale, sans notarisation Apple. L
 - Compteurs de messages non lus et notifications.
 - Navigation repositionnable, dossiers Gmail et libellés intégrés.
 - Thèmes clair/sombre et zoom du contenu.
+- Version affichée et vérification des mises à jour au démarrage, avec signal de couleur doux et lien vers GitHub.
 - Agenda du compte sélectionné, raccourci SwissTransfer et prochain rendez-vous défilant cliquable.
 
 Le code ne fixe pas de plafond de 30 comptes. La charge réelle de plus de 30 connexions simultanées n’a pas été validée ; les politiques de connexion Google restent applicables. Le bandeau Agenda lit le planning chargé par Google, avec le fuseau du navigateur/Mac, et ne parcourt pas tous les événements futurs.

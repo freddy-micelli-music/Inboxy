@@ -87,7 +87,7 @@ La lecture native est en lecture seule, par pages de 25 messages, avec corps tex
 
 - [VALIDATION.md](VALIDATION.md) : contrôles réussis et limites des essais.
 - [ARCHITECTURE.md](ARCHITECTURE.md) : séparation des profils, Google et Mailplane, stockage et étapes restantes.
-- `./check.sh` : 66 contrôles, dont encodages OAuth/MIME, compatibilité des anciens comptes et persistance de 45 profils WEB.
+- `./check.sh` : 76 contrôles, dont encodages OAuth/MIME, compatibilité des anciens comptes et persistance de 45 profils WEB.
 - `./check.sh --webkit` : contrôle supplémentaire de cookies dans deux profils de test, à lancer dans un Terminal normal. Non validé dans l’environnement restreint de l’agent.
 - `./build.sh` : méthode de compilation supplémentaire ; le projet Xcode reste le parcours habituel.
 
@@ -121,3 +121,13 @@ Un bandeau placé immédiatement après SwissTransfer annonce le prochain évén
 Les informations sont lues dans le planning rendu par Google, sans nouvelle autorisation OAuth, sans écriture d’événement et sans copie de cookies vers un autre profil. Les rendez-vous restent en mémoire. Les événements passés, annulés ou refusés reconnus sont écartés, les doublons regroupés et les journées entières prises en charge. La période effectivement chargée et les calendriers visibles dans Google déterminent les résultats : les pages futures non chargées et les calendriers masqués ne sont pas parcourus intégralement. Le message d’absence précise donc « Aucun prochain RDV affiché ». Une session expirée ou une lecture impossible propose d’ouvrir Agenda.
 
 L’heure est interprétée dans le fuseau du navigateur/Mac : conserver le même fuseau d’affichage dans Google Agenda pour un classement correct. L’intégration dépend de la structure des pages Google. Si la fiche ne peut plus être retrouvée après le clic, Agenda reste ouvert avec une indication pour la vérifier. Les raccourcis SwissTransfer et l’intégration Seeview-Pro sont conservés.
+
+## Version 0.3.7 — signature et disponibilité des mises à jour (27 octobre 2026)
+
+La signature près du logo est désormais **LA BOITE À GMAIL**, dans les dispositions verticale et horizontale. Le bas de la navigation affiche la version réellement lue dans l’application, sous le relevé des comptes ; dans les dispositions horizontales, elle figure au bas à droite de la barre.
+
+À chaque démarrage, une vérification unique interroge la dernière version stable publiée sur le dépôt public [Inboxy](https://github.com/freddy-micelli-music/Inboxy). Aucun compte GitHub, cookie Gmail ou donnée de compte n’est utilisé. Un clic sur la version permet de relancer la vérification. Si une version numérique plus récente possède un installateur Inboxy déjà téléversé, le texte annonce sa disponibilité et sa couleur évolue doucement du vert au doré puis revient, en boucle. Le réglage macOS de réduction des animations conserve une couleur fixe.
+
+Un clic sur la nouvelle version ouvre sa page GitHub dans le navigateur ; l’installation reste manuelle. Une panne réseau, une limite de requêtes ou une réponse invalide affiche « À vérifier », sans prétendre que le logiciel est à jour. Les brouillons, préversions et liens de téléchargement hors du dépôt Inboxy sont refusés. Le numéro de version d’une publication doit suivre le format `vMAJEUR.MINEUR.CORRECTIF`, avec un fichier `Inboxy-MAJEUR.MINEUR.CORRECTIF-macOS.zip`.
+
+Ce mécanisme signale les nouvelles versions ; il ne télécharge ni n’installe du code automatiquement. L’application reste signée localement et non notariée par Apple.
