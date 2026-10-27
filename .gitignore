@@ -1,0 +1,12 @@
+build/
+DerivedData/
+.DS_Store
+xcuserdata/
+*.xcuserstate
+client_secret*.json
+credentials*.json
+.env
+.env.*
+*.p12
+*.p8
+*.mobileprovision

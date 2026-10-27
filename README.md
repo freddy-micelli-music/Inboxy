@@ -35,7 +35,7 @@ Ouvrir **Aeris.xcodeproj** avec Xcode, sélectionner le schéma **Aeris**, puis 
 
 ```sh
 xcodebuild -project Aeris.xcodeproj -scheme Aeris -configuration Release -derivedDataPath build build
-./check.sh
+sh ./check.sh
 ```
 
 Aucune dépendance externe. Voir [les détails de développement](DEVELOPPEMENT.md), [l’architecture](ARCHITECTURE.md) et [les validations et limites](VALIDATION.md).
