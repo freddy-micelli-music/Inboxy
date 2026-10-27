@@ -154,3 +154,9 @@ Les APIs publiques utilisées sont [WKHTTPCookieStore](https://developer.apple.c
 ### Ajuster la place des blocs
 
 Dans la barre latérale à gauche ou à droite, deux petites poignées vertes séparent les **dossiers Gmail**, **Travail** et **Personnel**. Faire glisser une poignée vers le haut ou le bas pour modifier les hauteurs. Chaque bloc possède son propre défilement. Les proportions sont mémorisées pour les prochains lancements ; un double-clic sur une poignée remet les proportions initiales. Le bouton + de Corbeille conserve l’accès aux dossiers et libellés dans le premier panneau. La navigation placée en haut ou en bas conserve sa présentation en ruban.
+
+## Version 0.3.10 — dossier d’installation prêt à glisser (27 octobre 2026)
+
+Le ZIP distribué contient un dossier **Inboxy-0.3.10** réunissant **Inboxy.app**, le raccourci **Applications** et **MISE-A-JOUR.txt**. Quitter Inboxy, faire glisser l’application sur Applications, accepter le remplacement si nécessaire, puis relancer depuis Applications. Le texte explique aussi la première installation, la conservation des comptes locaux, le transfert vers un autre Mac et la recherche de nouvelles versions.
+
+`package.sh` génère ce dossier et son ZIP à partir d’une application déjà signée. Il vérifie la signature avant et après copie. Le schéma Xcode exécute cette préparation après la compilation et la signature ; `build.sh` l’appelle également après sa signature locale. Les sorties Xcode se trouvent dans `BUILT_PRODUCTS_DIR/Distribution`, et les sorties du script direct dans `build/Distribution` sauf répertoire personnalisé. L’alias est un lien macOS vers `/Applications`, conservé dans le ZIP. Le modèle `INSTALLATION.txt.in` reçoit automatiquement le numéro de version du programme.

@@ -8,3 +8,5 @@ xcrun swiftc -swift-version 5 -O -target "$(uname -m)-apple-macosx14.0" -module-
 if [ -f "$project_dir/Resources/AppIcon.icns" ]; then cp "$project_dir/Resources/AppIcon.icns" "$build_dir/Inboxy.app/Contents/Resources/"; fi
 codesign --force --sign - "$build_dir/Inboxy.app"
 echo "Application créée : $build_dir/Inboxy.app"
+
+sh "$project_dir/package.sh" "$build_dir/Inboxy.app" "$build_dir/Distribution"

@@ -1,0 +1,46 @@
+INBOXY — LA BOITE À GMAIL
+Version @VERSION@
+
+INSTALLATION OU MISE À JOUR
+
+1. Quittez Inboxy si l’application est ouverte.
+2. Dans ce dossier, faites glisser « Inboxy.app » sur le raccourci
+   « Applications » placé juste à côté.
+3. Si le Mac indique qu’Inboxy existe déjà, choisissez « Remplacer ».
+4. Ouvrez ensuite Inboxy depuis le dossier Applications du Mac.
+
+Vous pouvez supprimer ce dossier d’installation après avoir copié l’application.
+
+VOS COMPTES EXISTANTS
+
+Le remplacement de l’application conserve les comptes et les réglages enregistrés
+sur ce Mac. Il n’est pas nécessaire de supprimer les données d’Inboxy pour effectuer
+une mise à jour.
+
+Sur une première installation, cliquez sur « Connecter mon premier compte Gmail ».
+
+POUR CHANGER DE MAC
+
+Dans Inboxy, ouvrez Réglages → Général, puis « Sauvegarder mes comptes… ».
+Transférez le fichier .inboxybackup sur l’autre Mac et utilisez
+« Restaurer mes comptes… » avec le mot de passe choisi pour la sauvegarde.
+Gardez ce fichier privé et conservez son mot de passe séparément.
+Google peut demander une vérification ou une nouvelle connexion sur l’autre Mac.
+
+MISES À JOUR SUIVANTES
+
+Inboxy vérifie les nouvelles versions au démarrage. Vous pouvez également cliquer
+sur le numéro de version en bas de la barre des comptes. Lorsqu’une nouvelle
+version est proposée, cliquez dessus pour ouvrir sa page de téléchargement,
+puis répétez les étapes ci-dessus.
+
+COMPATIBILITÉ
+
+macOS 14 ou plus récent. La version distribuée sur GitHub est universelle :
+Intel et Apple Silicon. L’application est signée localement et n’est pas notariée
+par Apple.
+
+Éditeur : Frédéric Fantino
+Logiciel indépendant, non affilié à Google LLC.
+https://github.com/freddy-micelli-music/Inboxy
+© 2027 Fantino. Tous droits réservés.

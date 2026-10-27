@@ -191,3 +191,11 @@ Parcours de l’interface : les boutons Sauvegarder/Restaurer sont présents dan
 Les deux poignées ont été déplacées à la souris : hauteur du premier panneau de 183,6 à 254 points ; hauteur du second de 287,64 à 273 points après ajustement de Personnel. Après arrêt réel et relancement de la fenêtre de test, les deux hauteurs étaient 254 et 273. Aucun déplacement, suppression ou export d’un compte réel de l’utilisateur n’a été effectué. Les données fictives de ce banc d’essai ne sont pas incluses dans l’application livrée.
 
 Les finitions de texte des formulaires et l’identité du texte de statut ont été intégrées à la compilation finale. La migration d’une vraie session Google vers un autre Mac, les jetons API réels, le transfert sur macOS 14/15 et le double-clic de réinitialisation des panneaux n’ont pas été validés visuellement. Google peut demander une reconnexion, notamment pour des accès expirés ou liés à l’appareil. Les messages hors ligne, IndexedDB et le cache complet ne font pas partie de la sauvegarde.
+
+## Version 0.3.10 — emballage d’installation (27 octobre 2026)
+
+Compilation Release universelle réussie. La post-action du schéma Xcode a généré automatiquement Distribution/Inboxy-0.3.10 après la signature, ainsi que Inboxy-0.3.10-macOS.zip. Le script package.sh a également été exécuté directement sur l’application compilée. La signature du bundle copié est valide ; les architectures Intel et Apple Silicon sont présentes.
+
+Décompression réelle du ZIP : lien symbolique Applications conservé, cible exacte /Applications et dossier cible accessible ; application signée vérifiée ; MISE-A-JOUR.txt présent en UTF-8 avec le numéro 0.3.10 et les instructions de remplacement. Contrôle dans le Finder : trois éléments dans le même dossier, Applications identifié comme Alias, Inboxy comme Application et le texte de mise à jour. L’application n’a pas été glissée dans Applications pendant ce contrôle ; aucune installation existante n’a été remplacée.
+
+Le code fonctionnel de l’application reste celui de 0.3.9. Les 94 contrôles de cette version ne sont pas relancés pour ce changement d’emballage ; la compilation, la génération automatique, la signature, l’extraction du ZIP et l’inspection du Finder sont les vérifications ciblées.

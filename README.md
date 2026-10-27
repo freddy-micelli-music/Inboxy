@@ -8,13 +8,15 @@ Application macOS native pour réunir et organiser plusieurs comptes Gmail dans 
 
 ## Télécharger et installer
 
-[Télécharger Inboxy 0.3.9 pour macOS](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.9/Inboxy-0.3.9-macOS.zip)
+[Télécharger Inboxy 0.3.10 pour macOS](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.10/Inboxy-0.3.10-macOS.zip)
 
 macOS 14 minimum. Application universelle pour **Apple Silicon et Intel**.
 
 1. Quitter Inboxy si l’application est ouverte.
 2. Télécharger et décompresser le fichier ZIP.
-3. Glisser **Inboxy.app** dans **Applications** et remplacer l’ancienne version si nécessaire.
+3. Ouvrir le dossier obtenu : **Inboxy.app**, le raccourci **Applications** et **MISE-A-JOUR.txt** sont réunis.
+4. Glisser **Inboxy.app** sur ce raccourci et remplacer l’ancienne version si nécessaire.
+5. Relancer Inboxy depuis **Applications**.
 
 Cette version est un prototype avec signature locale, sans notarisation Apple. Le téléchargement ne contient aucun compte Gmail préconfiguré. Les profils existants restent stockés localement sur le Mac.
 
@@ -62,3 +64,7 @@ Dans **Général**, choisir **Sauvegarder mes comptes…**, créer un mot de pas
 La sauvegarde chiffrée inclut les cookies de session et le stockage local lorsque les deux Mac utilisent macOS 26 ou plus. Google peut demander une vérification ou une reconnexion : une migration sans ressaisie n’est pas garantie. Les messages hors ligne et le cache complet ne sont pas inclus. Pour compiler les nouvelles APIs conditionnelles, utiliser Xcode 26 ou plus récent ; l’application fonctionne toujours à partir de macOS 14.
 
 Dans la navigation latérale, tirer les deux petites poignées entre les trois blocs pour modifier leurs hauteurs. Les proportions sont mémorisées ; un double-clic remet les valeurs initiales.
+
+## Préparation automatique de l’installation
+
+Chaque compilation avec le schéma partagé prépare, après signature, un dossier dans `Distribution` avec l’application, le raccourci Applications et le guide texte de mise à jour. Le ZIP de ce dossier est prêt à distribuer. Le script `build.sh` effectue aussi cette préparation, et `package.sh` permet de la lancer sur un bundle Inboxy déjà signé. Les fichiers `package.sh` et `INSTALLATION.txt.in` doivent rester à la racine du projet.
