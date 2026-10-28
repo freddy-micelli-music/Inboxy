@@ -30,6 +30,7 @@ struct ContentView: View {
             ComposeAccountView(request: request).environmentObject(model)
         }
         .background(DarkWindowChrome())
+        .background(AutomaticUpdatePresentation(updater: model.automaticUpdater))
         .task { model.start() }
     }
     private var navigation: some View {
@@ -849,9 +850,9 @@ struct ProgramVersionStatus: View {
                 }.font(.system(size: 9, weight: state.offer == nil ? .regular : .semibold))
                     .foregroundStyle(color).contentShape(Rectangle())
             }.buttonStyle(.plain).disabled(state == .checking)
-                .help(state.offer == nil ? "Vérifier les nouvelles versions sur GitHub" : "Ouvrir la page de téléchargement de la nouvelle version")
+                .help(state.offer == nil ? "Vérifier les nouvelles versions sur GitHub" : "Télécharger, installer et relancer Inboxy")
                 .accessibilityLabel("Inboxy, " + state.label(version: version))
-                .accessibilityHint(state.offer == nil ? "Vérifie les mises à jour" : "Ouvre la nouvelle version dans le navigateur")
+                .accessibilityHint(state.offer == nil ? "Vérifie les mises à jour" : "Installe la nouvelle version et relance Inboxy")
         }.fixedSize(horizontal: false, vertical: true)
     }
 }

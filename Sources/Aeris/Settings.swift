@@ -249,7 +249,7 @@ struct AccountBackupSheet: View {
             panel.allowedContentTypes = [backupType]
             panel.nameFieldStringValue = "Inboxy-comptes-" + Date().formatted(.iso8601.year().month().day().dateSeparator(.dash)) + ".inboxybackup"
             guard panel.runModal() == .OK, let url = panel.url else { return }
-            busy = true; status = "Préparation de la sauvegarde chiffrée…"
+            busy = true; model.accountTransferInProgress = true; status = "Préparation de la sauvegarde chiffrée…"
             let secret = password
             Task {
                 do {
@@ -260,17 +260,17 @@ struct AccountBackupSheet: View {
                     status = "\(backup.profiles.count) compte(s) sauvegardé(s). Copiez ce fichier sur l’autre Mac, puis utilisez Restaurer mes comptes. Gardez son mot de passe séparément."
                     completed = true; password = ""; confirmation = ""
                 } catch { status = error.localizedDescription }
-                busy = false
+                busy = false; model.accountTransferInProgress = false
             }
         } else {
             let panel = NSOpenPanel()
             panel.allowedContentTypes = [backupType]; panel.allowsMultipleSelection = false
             guard panel.runModal() == .OK, let url = panel.url else { return }
-            busy = true; status = "Lecture de la sauvegarde…"
+            busy = true; model.accountTransferInProgress = true; status = "Lecture de la sauvegarde…"
             let secret = password
             Task {
                 let access = url.startAccessingSecurityScopedResource()
-                defer { if access { url.stopAccessingSecurityScopedResource() }; busy = false }
+                defer { if access { url.stopAccessingSecurityScopedResource() }; busy = false; model.accountTransferInProgress = false }
                 do {
                     let handle = try FileHandle(forReadingFrom: url)
                     defer { try? handle.close() }
@@ -282,14 +282,14 @@ struct AccountBackupSheet: View {
         }
     }
     private func restore(_ backup: AccountBackup) {
-        busy = true; status = "Restauration des comptes et des sessions…"
+        busy = true; model.accountTransferInProgress = true; status = "Restauration des comptes et des sessions…"
         Task {
             do {
                 let count = try await model.restoreBackup(backup)
                 status = "\(count) compte(s) restauré(s). Ouvrez chaque boîte pour vérifier la session Google. Une reconnexion peut rester nécessaire."
                 completed = true; preview = nil
             } catch { status = "La restauration n’a pas abouti. " + error.localizedDescription }
-            busy = false
+            busy = false; model.accountTransferInProgress = false
         }
     }
 }

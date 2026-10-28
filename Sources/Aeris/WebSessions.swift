@@ -1,6 +1,149 @@
 import SwiftUI
 import WebKit
 
+enum GmailAttachmentRouting {
+    static func attachmentURL(_ url: URL) -> Bool {
+        guard url.scheme == "https", url.user == nil, url.password == nil, url.port == nil,
+              let host = url.host?.lowercased() else { return false }
+        if host == "mail-attachment.googleusercontent.com" || host.hasSuffix("-mail-attachment.googleusercontent.com") { return true }
+        guard GmailNavigationRules.mailboxPage(url), let parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return false }
+        return parts.queryItems?.contains { $0.name == "view" && $0.value == "att" } == true
+    }
+    static func blobFromGmail(_ url: URL) -> Bool {
+        guard url.scheme == "blob", let origin = URL(string: String(url.absoluteString.dropFirst(5))) else { return false }
+        return origin.scheme == "https" && origin.host == "mail.google.com" && origin.user == nil && origin.password == nil && origin.port == nil
+    }
+    static func downloadResponse(_ response: URLResponse, canShow: Bool) -> Bool {
+        let disposition = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Disposition") ?? ""
+        let kind = disposition.split(separator: ";").first?.trimmingCharacters(in: .whitespaces).lowercased()
+        return !canShow || kind == "attachment" || (response.url.map { attachmentURL($0) || blobFromGmail($0) } == true && response.mimeType?.lowercased() != "text/html")
+    }
+}
+
+struct AttachmentFileStore {
+    struct Staging { let directory: URL; let file: URL; let name: String }
+    var destination: URL
+    static func safeName(_ suggested: String) -> String {
+        let leaf = (suggested.replacingOccurrences(of: "\\", with: "/") as NSString).lastPathComponent
+        var value = leaf.components(separatedBy: .controlCharacters).joined().replacingOccurrences(of: "/", with: "").replacingOccurrences(of: "\\", with: "").replacingOccurrences(of: ":", with: "-").trimmingCharacters(in: .whitespacesAndNewlines)
+        while value.hasPrefix(".") { value.removeFirst() }
+        if value.isEmpty { value = "Pièce jointe" }
+        while value.utf8.count > 220 { value.removeLast() }
+        return value.isEmpty ? "Pièce jointe" : value
+    }
+    func stage(_ suggested: String) throws -> Staging {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Inboxy-attachment-" + UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        let name = Self.safeName(suggested)
+        return Staging(directory: directory, file: directory.appendingPathComponent(name), name: name)
+    }
+    func finish(_ staging: Staging) throws -> URL {
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        let ext = (staging.name as NSString).pathExtension
+        let stem = ext.isEmpty ? staging.name : (staging.name as NSString).deletingPathExtension
+        for index in 1...1000 {
+            let name = index == 1 ? staging.name : stem + " (\(index))" + (ext.isEmpty ? "" : "." + ext)
+            let url = destination.appendingPathComponent(name)
+            do {
+                // moveItem refuses an existing destination, including a symbolic link.
+                try FileManager.default.moveItem(at: staging.file, to: url)
+                discard(staging)
+                return url
+            } catch {
+                let issue = error as NSError
+                if issue.domain == NSCocoaErrorDomain && issue.code == NSFileWriteFileExistsError { continue }
+                throw error
+            }
+        }
+        throw AerisError.message("Trop de fichiers portent déjà ce nom dans Téléchargements.")
+    }
+    func discard(_ staging: Staging) { try? FileManager.default.removeItem(at: staging.directory) }
+}
+
+@MainActor final class AttachmentDownloads: NSObject, ObservableObject, WKDownloadDelegate {
+    static let shared = AttachmentDownloads()
+    @Published private(set) var activeCount = 0
+    @Published private(set) var lastSavedURL: URL?
+    @Published private(set) var lastError: String?
+    private struct Transfer {
+        let download: WKDownload
+        let source: WKWebView
+        let navigation: (any WKNavigationDelegate)?
+        var staging: AttachmentFileStore.Staging?
+    }
+    private var transfers: [ObjectIdentifier: Transfer] = [:]
+    private var popups: [ObjectIdentifier: (WKWebView, WebDelegate)] = [:]
+    private let store: AttachmentFileStore
+    init(destination: URL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]) {
+        store = AttachmentFileStore(destination: destination)
+    }
+    func adopt(_ download: WKDownload, from web: WKWebView) {
+        transfers[ObjectIdentifier(download)] = Transfer(download: download, source: web, navigation: web.navigationDelegate)
+        download.delegate = self
+        activeCount = transfers.count; lastError = nil
+        popups[ObjectIdentifier(web)] = nil
+    }
+    func popup(configuration: WKWebViewConfiguration, inboxURL: URL) -> WKWebView {
+        let web = WKWebView(frame: .zero, configuration: configuration)
+        let key = ObjectIdentifier(web)
+        let delegate = WebDelegate(inboxURL: inboxURL) { [weak self] status in
+            if let error = status.error { self?.lastError = "Téléchargement : " + error }
+        }
+        delegate.downloads = self
+        delegate.popupFinished = { [weak self] in self?.popups[key] = nil }
+        web.navigationDelegate = delegate; web.uiDelegate = delegate
+        popups[key] = (web, delegate)
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 60_000_000_000)
+            if let popup = self?.popups.removeValue(forKey: key) {
+                popup.0.stopLoading()
+                self?.lastError = "Le téléchargement n’a pas démarré. Réessayez depuis la pièce jointe dans Gmail."
+            }
+        }
+        return web
+    }
+    func download(_ download: WKDownload, decideDestinationUsing response: URLResponse, suggestedFilename: String, completionHandler: @escaping (URL?) -> Void) {
+        let key = ObjectIdentifier(download)
+        guard transfers[key] != nil else { completionHandler(nil); return }
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            failed(download, message: "Le serveur a refusé la pièce jointe (\(http.statusCode)). Réessayez depuis le message Gmail.")
+            completionHandler(nil); return
+        }
+        do {
+            let staging = try store.stage(suggestedFilename)
+            transfers[key]?.staging = staging
+            completionHandler(staging.file)
+        } catch { failed(download, message: error.localizedDescription); completionHandler(nil) }
+    }
+    func downloadDidFinish(_ download: WKDownload) {
+        guard let transfer = transfers.removeValue(forKey: ObjectIdentifier(download)) else { return }
+        defer { activeCount = transfers.count }
+        guard let staging = transfer.staging else { return }
+        do { lastSavedURL = try store.finish(staging); lastError = nil }
+        catch {
+            // Keep completed bytes if Downloads becomes unavailable; offer Save As.
+            let panel = NSSavePanel(); panel.nameFieldStringValue = staging.name
+            panel.message = "Impossible d’enregistrer dans Téléchargements. Choisissez un autre emplacement."
+            panel.begin { response in
+                defer { self.store.discard(staging) }
+                guard response == .OK, let url = panel.url else { self.lastError = "Enregistrement de la pièce jointe annulé."; return }
+                do {
+                    // A save panel explicitly confirms replacement of an existing file.
+                    if FileManager.default.fileExists(atPath: url.path) {
+                        _ = try FileManager.default.replaceItemAt(url, withItemAt: staging.file)
+                    } else { try FileManager.default.moveItem(at: staging.file, to: url) }
+                    self.lastSavedURL = url; self.lastError = nil
+                } catch { self.lastError = "Pièce jointe non enregistrée : " + error.localizedDescription }
+            }
+        }
+    }
+    func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) { failed(download, message: error.localizedDescription) }
+    private func failed(_ download: WKDownload, message: String) {
+        if let staging = transfers.removeValue(forKey: ObjectIdentifier(download))?.staging { store.discard(staging) }
+        activeCount = transfers.count; lastError = "Pièce jointe non téléchargée : " + message
+    }
+}
+
 enum GmailNavigationRules {
     static func mailboxPage(_ url: URL?) -> Bool {
         url?.scheme == "https" && url?.host?.lowercased() == "mail.google.com" && url?.path.hasPrefix("/mail/") == true
@@ -571,6 +714,8 @@ enum GmailMailboxMetadata {
 }
 
 @MainActor final class WebDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
+    var downloads = AttachmentDownloads.shared
+    var popupFinished: (() -> Void)?
     var pendingCalendarEventID: String?
     weak var mailboxTracker: GmailMailboxTracker?
     var composeMailto: ((URL) -> Void)?
@@ -580,6 +725,7 @@ enum GmailMailboxMetadata {
     private let inboxURL: URL
     private var activeNavigation: WKNavigation?
     private var retriedCookieRedirect = false
+    private var downloadNavigationPending = false
     init(inboxURL: URL, changed: @escaping (WebSessions.Status) -> Void) { self.inboxURL = inboxURL; self.changed = changed }
     private func fail(_ message: String) { status.loading = false; status.error = message; changed(status) }
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
@@ -587,6 +733,12 @@ enum GmailMailboxMetadata {
         if url.scheme?.lowercased() == "mailto" {
             composeMailto?(url); decisionHandler(.cancel); return
         }
+        let attachment = GmailAttachmentRouting.attachmentURL(url) || GmailAttachmentRouting.blobFromGmail(url)
+        if action.shouldPerformDownload, attachment || GmailNavigationRules.mailboxPage(webView.url) {
+            downloadNavigationPending = true
+            decisionHandler(.download); return
+        }
+        if attachment { decisionHandler(.allow); return }
         if GmailNavigationRules.externalPage(url, from: webView.url, activated: action.navigationType == .linkActivated) {
             NSWorkspace.shared.open(url); decisionHandler(.cancel); return
         }
@@ -609,8 +761,25 @@ enum GmailMailboxMetadata {
             decisionHandler(.cancel)
         } else { decisionHandler(.allow) }
     }
+    func webView(_ webView: WKWebView, decidePolicyFor response: WKNavigationResponse, decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
+        if GmailAttachmentRouting.downloadResponse(response.response, canShow: response.canShowMIMEType) {
+            downloadNavigationPending = true
+            decisionHandler(.download)
+        } else { decisionHandler(.allow) }
+    }
+    func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
+        downloads.adopt(download, from: webView); popupFinished?()
+        downloadNavigationPending = true
+        status.loading = false; status.error = nil; changed(status)
+    }
+    func webView(_ webView: WKWebView, navigationResponse: WKNavigationResponse, didBecome download: WKDownload) {
+        downloads.adopt(download, from: webView); popupFinished?()
+        downloadNavigationPending = true
+        status.loading = false; status.error = nil; changed(status)
+    }
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         activeNavigation = navigation
+        downloadNavigationPending = false
         status.loading = true; status.error = nil; status.host = webView.url?.host ?? "mail.google.com"; changed(status)
     }
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) { status.host = webView.url?.host ?? status.host; changed(status) }
@@ -645,6 +814,8 @@ enum GmailMailboxMetadata {
         guard !stale(navigation) else { return }
         let nsError = error as NSError
         if GmailNavigationRules.cancelled(nsError) { return }
+        if downloadNavigationPending, nsError.domain == "WebKitErrorDomain", nsError.code == 102 { return }
+        popupFinished?()
         // Retry only this known cookie-check interruption, once per web-view lifetime.
         // Start from Gmail instead of resubmitting a sign-in form or clearing cookies.
         if status.error == nil, !retriedCookieRedirect, GmailNavigationRules.cookieRedirectInterrupted(nsError, currentURL: web.url) {
@@ -669,6 +840,9 @@ enum GmailMailboxMetadata {
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for action: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         guard let url = action.request.url else { return nil }
         if url.scheme?.lowercased() == "mailto" { composeMailto?(url); return nil }
+        if action.shouldPerformDownload || GmailAttachmentRouting.attachmentURL(url) || GmailAttachmentRouting.blobFromGmail(url) || (GmailNavigationRules.internalDocument(url) && GmailNavigationRules.mailboxPage(webView.url)) {
+            return downloads.popup(configuration: configuration, inboxURL: inboxURL)
+        }
         if GmailNavigationRules.externalPage(url, from: webView.url, activated: action.navigationType == .linkActivated, newWindow: true) {
             NSWorkspace.shared.open(url); return nil
         }
@@ -696,6 +870,7 @@ enum GmailMailboxMetadata {
         } else { panel.begin { response in completionHandler(response == .OK ? panel.urls : nil) } }
     }
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { fail("La vue Gmail s’est interrompue. Cliquez sur Actualiser pour la recharger.") }
+    func webViewDidClose(_ webView: WKWebView) { popupFinished?() }
 }
 
 struct GmailWebView: NSViewRepresentable {
@@ -707,6 +882,7 @@ struct GmailWebView: NSViewRepresentable {
 struct IntegratedGmailView: View {
     let account: MailAccount
     @ObservedObject var sessions: WebSessions
+    @ObservedObject private var downloads = AttachmentDownloads.shared
     var showNative: (() -> Void)?
     var body: some View {
         let status = sessions.states[account.id] ?? WebSessions.Status()
@@ -716,6 +892,14 @@ struct IntegratedGmailView: View {
                     .help("Connexion à " + status.host)
                     .accessibilityLabel("Connexion à " + status.host)
                 Spacer(minLength: 8)
+                Button {
+                    if let url = downloads.lastSavedURL { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                    else { NSWorkspace.shared.open(FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]) }
+                } label: {
+                    Label(downloads.activeCount > 0 ? "\(downloads.activeCount)" : "", systemImage: "arrow.down.circle")
+                }.buttonStyle(.plain).help(downloads.lastSavedURL.map { "Afficher dans le Finder : " + $0.lastPathComponent } ?? "Ouvrir Téléchargements")
+                    .accessibilityLabel("Téléchargements")
+                    .accessibilityValue(downloads.activeCount > 0 ? "\(downloads.activeCount) en cours" : (downloads.lastSavedURL?.lastPathComponent ?? "Aucun fichier téléchargé"))
                 Button { sessions.setZoom(1, account: account) } label: {
                     Label("\(Int((sessions.zoom(for: account) * 100).rounded())) %", systemImage: "magnifyingglass")
                         .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -736,6 +920,9 @@ struct IntegratedGmailView: View {
                 .background(Palette.navigationBackground)
             if let error = status.error {
                 HStack(alignment: .top) { Image(systemName: "exclamationmark.triangle"); Text(error).font(.system(size: 12)); Spacer(); Button("Réessayer") { sessions.reload(account: account) } }.padding(14).background(.orange.opacity(0.12))
+            }
+            if let error = downloads.lastError {
+                Text(error).font(.system(size: 12)).foregroundStyle(.orange).textSelection(.enabled).padding(10)
             }
             if let files = sessions.pendingAttachments[account.id], !files.isEmpty {
                 HStack(spacing: 12) {

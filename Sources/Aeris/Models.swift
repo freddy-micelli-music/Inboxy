@@ -306,3 +306,12 @@ enum SidebarPanelLayout {
         return result
     }
 }
+
+enum AutomaticUpdatePolicy {
+    static func trustedArchive(_ url: URL, version: String) -> Bool {
+        guard ProgramVersion(version) != nil else { return false }
+        return url.scheme == "https" && url.host == "github.com" && url.port == nil
+            && url.user == nil && url.password == nil && url.query == nil && url.fragment == nil
+            && url.path == "/freddy-micelli-music/Inboxy/releases/download/v\(version)/Inboxy-\(version)-Update.zip"
+    }
+}

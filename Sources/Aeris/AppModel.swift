@@ -27,6 +27,8 @@ import UserNotifications
     @Published var connecting = false
     @Published var notificationStatus = "Non activées"
     @Published var composeRequest: MailComposeRequest?
+    let automaticUpdater = AutomaticUpdater()
+    @Published var accountTransferInProgress = false
     @Published private(set) var updateState: AppUpdateState = .idle
     let programVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
     private var checkedUpdatesAtStartup = false
@@ -131,8 +133,13 @@ import UserNotifications
         } catch { updateState = .unavailable }
     }
     func openProgramVersion() {
-        if case .available(let offer) = updateState { NSWorkspace.shared.open(offer.releaseURL) }
-        else { Task { await checkForUpdates() } }
+        if case .available(let offer) = updateState {
+            guard !connecting, composeRequest == nil, !accountTransferInProgress, removing.isEmpty, AttachmentDownloads.shared.activeCount == 0 else {
+                alert = "Terminez la connexion, la préparation du message, le téléchargement ou le transfert de comptes avant de lancer la mise à jour."
+                return
+            }
+            automaticUpdater.install(offer)
+        } else { Task { await checkForUpdates() } }
     }
     func restoreBackup(_ backup: AccountBackup) async throws -> Int {
         try backup.validate()
