@@ -8,7 +8,7 @@ Application macOS native pour réunir et organiser plusieurs comptes Gmail dans 
 
 ## Télécharger et installer
 
-[Télécharger Inboxy 0.3.10 pour macOS](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.10/Inboxy-0.3.10-macOS.zip)
+[Télécharger Inboxy 0.3.12 pour macOS](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.12/Inboxy-0.3.12-macOS.zip)
 
 macOS 14 minimum. Application universelle pour **Apple Silicon et Intel**.
 
@@ -26,6 +26,7 @@ Inboxy démarre sans compte ni message fictif. Cliquer sur **Connecter mon premi
 
 ## Fonctions
 
+- Téléchargement des pièces jointes vers Téléchargements, doublons préservés et accès au dernier fichier dans le Finder.
 - Plusieurs comptes Gmail avec un stockage WebKit indépendant par profil.
 - Comptes renommables, suppression locale et réorganisation par glisser-déposer.
 - Compteurs de messages non lus et notifications.
@@ -33,7 +34,7 @@ Inboxy démarre sans compte ni message fictif. Cliquer sur **Connecter mon premi
 - Thèmes clair/sombre et zoom du contenu.
 - Sauvegarde chiffrée des profils et sessions transférables, restauration avec aperçu.
 - Blocs Dossiers Gmail, Travail et Personnel redimensionnables dans la barre latérale.
-- Version affichée et vérification des mises à jour au démarrage, avec signal de couleur doux et lien vers GitHub.
+- Version affichée et vérification des mises à jour au démarrage, avec signal de couleur doux.
 - Agenda du compte sélectionné, raccourci SwissTransfer et prochain rendez-vous défilant cliquable.
 
 Le code ne fixe pas de plafond de 30 comptes. La charge réelle de plus de 30 connexions simultanées n’a pas été validée ; les politiques de connexion Google restent applicables. Le bandeau Agenda lit le planning chargé par Google, avec le fuseau du navigateur/Mac, et ne parcourt pas tous les événements futurs.
@@ -47,7 +48,7 @@ xcodebuild -project Aeris.xcodeproj -scheme Aeris -configuration Release -derive
 sh ./check.sh
 ```
 
-Aucune dépendance externe. Voir [les détails de développement](DEVELOPPEMENT.md), [l’architecture](ARCHITECTURE.md) et [les validations et limites](VALIDATION.md).
+Sparkle 2.10.0 est téléchargé depuis la distribution officielle à la première compilation puis contrôlé par SHA-256. Une connexion réseau est nécessaire à cette étape. Voir [les détails de développement](DEVELOPPEMENT.md), [l’architecture](ARCHITECTURE.md) et [les validations et limites](VALIDATION.md).
 
 ## À propos
 
@@ -68,3 +69,14 @@ Dans la navigation latérale, tirer les deux petites poignées entre les trois b
 ## Préparation automatique de l’installation
 
 Chaque compilation avec le schéma partagé prépare, après signature, un dossier dans `Distribution` avec l’application, le raccourci Applications et le guide texte de mise à jour. Le ZIP de ce dossier est prêt à distribuer. Le script `build.sh` effectue aussi cette préparation, et `package.sh` permet de la lancer sur un bundle Inboxy déjà signé. Les fichiers `package.sh` et `INSTALLATION.txt.in` doivent rester à la racine du projet.
+
+
+## Version 0.3.12 — pièces jointes
+
+Le bouton de téléchargement Gmail est pris en charge par WebKit dans la session du compte concerné : réponses serveur, fichiers blob et fenêtres de téléchargement. Les fichiers vont dans Téléchargements ; les doublons reçoivent un numéro, et les erreurs de transfert restent visibles.
+
+110 contrôles automatiques réussis et essais WebKit avec fichiers synthétiques, dont un serveur exigeant le cookie de session. La pièce jointe Gmail privée de chaque utilisateur reste à vérifier après installation.
+
+Pour cette publication, installer le ZIP manuellement en suivant les étapes ci-dessus. L’intégration Sparkle a été testée dans une application isolée, mais le flux signé de production n’est pas encore publié ; cette release ne prétend pas activer la distribution automatique des mises à jour.
+
+[Code source complet de 0.3.12](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.12/Inboxy-0.3.12-Sources.zip) · [SHA-256 des archives](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.12/SHA256SUMS.txt)

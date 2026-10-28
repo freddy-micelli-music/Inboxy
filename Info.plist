@@ -46,7 +46,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.3.10</string>
+	<string>0.3.12</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -61,7 +61,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>13</string>
+	<string>15</string>
 	<key>InboxySupportsSeeviewMail</key>
 	<true/>
 	<key>LSMinimumSystemVersion</key>
@@ -109,6 +109,24 @@
 			</array>
 		</dict>
 	</array>
+	<key>SUAutomaticallyUpdate</key>
+	<false/>
+	<key>SUEnableAutomaticChecks</key>
+	<false/>
+	<key>SUEnableSystemProfiling</key>
+	<false/>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/freddy-micelli-music/Inboxy/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>O2onvM62pC1io6jQKm8Nc2UyFXcd4kOmOsBIoYtZ2ik=</string>
+	<key>SURequireSignedFeed</key>
+	<true/>
+	<key>SUShowReleaseNotes</key>
+	<false/>
+	<key>SUSignedFeedFailureExpirationInterval</key>
+	<integer>0</integer>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
@@ -141,14 +159,14 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>fr.inboxy.backup</string>
-			<key>UTTypeDescription</key>
-			<string>Sauvegarde Inboxy chiffrée</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>Sauvegarde Inboxy chiffrée</string>
+			<key>UTTypeIdentifier</key>
+			<string>fr.inboxy.backup</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>

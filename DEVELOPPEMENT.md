@@ -16,7 +16,7 @@ Projet Xcode SwiftUI + WebKit pour réunir des comptes Gmail dans des profils in
 2. Choisir **Aeris → My Mac**.
 3. Cliquer sur **▶︎** ou appuyer sur **⌘R**.
 
-macOS 14 minimum ; Xcode 26 ou plus récent. Projet vérifié avec Xcode 27.1 / Swift 6.4 en mode langage Swift 5. Aucune dépendance externe. Signature locale ; le binaire Release fourni est universel Intel + Apple Silicon, sans notarisation de distribution.
+macOS 14 minimum ; Xcode 26 ou plus récent. Projet vérifié avec Xcode 27.1 / Swift 6.4 en mode langage Swift 5. Sparkle 2.10.0 est téléchargé depuis sa distribution officielle au premier lancement de la compilation, puis vérifié par son empreinte SHA-256 ; sa licence est incluse. Signature locale ; le binaire Release fourni est universel Intel + Apple Silicon, sans notarisation de distribution.
 
 ## Ajouter un compte dans Inboxy
 
@@ -62,6 +62,7 @@ Le zoom utilise l’API publique [WKWebView.pageZoom](https://developer.apple.co
 
 ## Fonctions
 
+- Pièces jointes Gmail : téléchargement dans le dossier Téléchargements du Mac avec la session WebKit du compte, y compris les fichiers blob et les fenêtres de téléchargement. Un nom déjà présent reçoit un suffixe sans écrasement ; un transfert interrompu affiche une erreur. La flèche de téléchargement dans le bandeau permet de retrouver le dernier fichier dans le Finder. Si le dossier Téléchargements est indisponible, une fenêtre propose un autre emplacement.
 - Barre latérale sombre, comptes groupés, recherche de comptes, thèmes clair/sombre/automatique.
 - ⌘K : sélecteur rapide ; ⌘1–9 : comptes 1 à 9 ; ⌃Tab / ⌃⇧Tab : compte suivant/précédent.
 - ⌘R : actualiser le profil courant ; ⌘N : nouveau message dans Gmail intégré pour un profil WEB.
@@ -127,9 +128,13 @@ La signature près du logo est désormais **LA BOITE À GMAIL**, dans les dispos
 
 À chaque démarrage, une vérification unique interroge la dernière version stable publiée sur le dépôt public [Inboxy](https://github.com/freddy-micelli-music/Inboxy). Aucun compte GitHub, cookie Gmail ou donnée de compte n’est utilisé. Un clic sur la version permet de relancer la vérification. Si une version numérique plus récente possède un installateur Inboxy déjà téléversé, le texte annonce sa disponibilité et sa couleur évolue doucement du vert au doré puis revient, en boucle. Le réglage macOS de réduction des animations conserve une couleur fixe.
 
-Un clic sur la nouvelle version ouvre sa page GitHub dans le navigateur ; l’installation reste manuelle. Une panne réseau, une limite de requêtes ou une réponse invalide affiche « À vérifier », sans prétendre que le logiciel est à jour. Les brouillons, préversions et liens de téléchargement hors du dépôt Inboxy sont refusés. Le numéro de version d’une publication doit suivre le format `vMAJEUR.MINEUR.CORRECTIF`, avec un fichier `Inboxy-MAJEUR.MINEUR.CORRECTIF-macOS.zip`.
+À partir de 0.3.11, un clic sur une version disponible ouvre une fenêtre de progression : téléchargement, vérification de signature, installation et relancement. Une panne réseau, une limite de requêtes ou une réponse invalide affiche « À vérifier », sans prétendre que le logiciel est à jour. Les brouillons, préversions et liens de téléchargement hors du dépôt Inboxy sont refusés. Le numéro de version d’une publication doit suivre le format `vMAJEUR.MINEUR.CORRECTIF`, avec un fichier `Inboxy-MAJEUR.MINEUR.CORRECTIF-macOS.zip` pour l’installation manuelle et une archive signée `Inboxy-MAJEUR.MINEUR.CORRECTIF-Update.zip` pour l’installation intégrée.
 
-Ce mécanisme signale les nouvelles versions ; il ne télécharge ni n’installe du code automatiquement. L’application reste signée localement et non notariée par Apple.
+L’installation est déclenchée uniquement par le clic de l’utilisateur. Le flux et l’archive doivent être signés avec la clé Ed25519 publique intégrée à Inboxy. Aucune recherche périodique Sparkle ni installation silencieuse au démarrage. La connexion d’un compte, une demande de rédaction ou un transfert de sauvegarde en cours empêchent de démarrer l’installation. Les comptes et réglages sont conservés dans leurs emplacements habituels. Le système peut demander l’autorisation de remplacer une application protégée. L’application reste signée localement et non notariée par Apple.
+
+Les versions antérieures doivent être remplacées une première fois manuellement. Le script de publication `prepare-update.sh` utilise une clé conservée dans un trousseau séparé Inboxy pour signer l’archive dédiée et `appcast.xml`. Le flux doit être téléversé sans aucune modification après signature. `SPARKLE_TOOLS_DIR` désigne la distribution officielle contenant les outils Sparkle ; `INBOXY_KEYCHAIN_SIGNER` désigne l’utilitaire compilé depuis `Publisher/InboxyKeychainSigner.swift`.
+
+Cet utilitaire de publication utilise uniquement `~/Library/Keychains/Inboxy-signing.keychain-db`, sans consulter les mots de passe du trousseau de session. Lors de l’initialisation manuelle, macOS demande au propriétaire de choisir son propre mot de passe. La clé privée n’est jamais écrite dans un fichier d’export ni affichée : elle est transmise en mémoire à l’outil officiel de signature, dont l’empreinte SHA-256 est vérifiée avant tout accès à la clé. Le logiciel installé chez les utilisateurs contient uniquement la clé publique et n’a pas besoin de cet outil de publication.
 
 ## Version 0.3.8 — premier compte Gmail (27 octobre 2026)
 

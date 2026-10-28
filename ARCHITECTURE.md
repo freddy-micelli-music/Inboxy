@@ -49,6 +49,24 @@ Le retrait d’un profil WEB ne réclame ni jeton ni appel API : il détache la 
 - La signature est locale. Developer ID, hardened runtime, sandbox adaptée et notarisation restent à préparer pour une diffusion.
 - Pour une version complète : confirmer d’abord une méthode de connexion durable, puis traiter les notifications web et/ou API, les téléchargements, l’accessibilité et les campagnes de stabilité.
 
+## Installation des mises à jour à partir de 0.3.11
+
+Le contrôle GitHub de démarrage reste distinct de l’installation. Il utilise une session éphémère sans jeton. Le clic sur une offre de version stable crée un `SPUUpdater` avec `AutomaticUpdater` comme pilote d’interface. Le pilote vérifie la correspondance entre l’offre sélectionnée et la version du flux signé, puis le chemin exact HTTPS du ZIP dédié dans le dépôt Inboxy. Sparkle vérifie les signatures du flux et de l’archive avant extraction. Un échec de signature du flux n’expire pas vers une acceptation non signée.
+
+Une fenêtre AppKit autonome héberge la progression SwiftUI ; une feuille modale peut empêcher la terminaison de l’application. Le pilote accepte l’installation et le relancement à la suite du clic initial. L’annulation est proposée pendant la vérification ou le téléchargement, puis désactivée pendant la préparation et le remplacement. Aucune terminaison forcée n’est utilisée. Si l’application retarde sa fermeture, un bouton permet de renouveler la demande normale de fermeture.
+
+`prepare-update.sh` crée une archive avec Inboxy.app à la racine, vérifie et signe cette archive avec la clé dédiée au Trousseau, génère le flux et signe ses octets exacts. L’installateur manuel contenant le raccourci Applications reste un fichier distinct. La clé privée n’entre jamais dans le projet ni dans les archives.
+
+Documentation primaire : [Sparkle](https://sparkle-project.org/documentation/), [interface personnalisée](https://sparkle-project.org/documentation/custom-user-interfaces/), [publication](https://sparkle-project.org/documentation/publishing/).
+
+## Téléchargements des pièces jointes — 0.3.12
+
+`WebDelegate` gère les conversions de navigation en `WKDownload`, par action de téléchargement, réponse Content-Disposition attachment, format non affichable ou réponse de fichier Gmail reconnue. Les liens d’attachement et les blobs Gmail passent avant la règle d’ouverture des pages externes. Les fenêtres de téléchargement conservent la configuration WebKit reçue, notamment le stockage du compte ; aucun cookie n’est recopié vers une URLSession ou un navigateur tiers.
+
+`AttachmentDownloads` retient le transfert, sa vue et son délégué jusqu’à sa fin, même si la vue du compte quitte le cache. Les fenêtres temporaires sont libérées après conversion, fermeture ou délai borné. Les interruptions de navigation dues à la conversion en téléchargement ne deviennent pas des erreurs de connexion Google.
+
+`AttachmentFileStore` prépare le fichier dans un répertoire temporaire privé. Après succès seulement, il déplace les octets vers Téléchargements et ajoute un suffixe en cas de collision. Le déplacement refuse une destination existante ; aucun fichier incomplet n’est présenté comme terminé. Le nom est limité à un composant visible et borné en UTF-8. Une erreur d’enregistrement propose Enregistrer sous ; une erreur réseau nettoie les octets partiels et reste visible dans l’interface. Les liens ordinaires contenus dans les messages conservent leur ouverture dans le navigateur système.
+
 ## Sources vérifiées le 22 octobre 2026
 
 - [WebKit — Building Profiles with new WebKit API](https://webkit.org/blog/14423/building-profiles-with-new-webkit-api/).
