@@ -9,6 +9,34 @@ import WebKit
             guard condition() else { throw AerisError.message("FAIL: " + description) }
             passed += 1; print("PASS: " + description)
         }
+        let attachmentURL = URL(string: "https://mail.google.com/mail/u/0/?view=att&attid=0.1&disp=safe")!
+        try check(GmailAttachmentRouting.attachmentURL(attachmentURL) && GmailAttachmentRouting.attachmentURL(URL(string: "https://doc-123-mail-attachment.googleusercontent.com/attachment/test")!), "Pièces jointes Gmail et serveur de fichiers Google reconnus")
+        try check(["https://mail.google.com/mail/u/0/#inbox", "https://mail.google.com.evil.test/mail/?view=att", "https://example.test/attachment/file", "https://mail-attachment.googleusercontent.com.evil.test/a"].allSatisfy { !GmailAttachmentRouting.attachmentURL(URL(string: $0)!) }, "Liens ordinaires et domaines ressemblants exclus des pièces jointes")
+        try check(GmailAttachmentRouting.blobFromGmail(URL(string: "blob:https://mail.google.com/test")!) && !GmailAttachmentRouting.blobFromGmail(URL(string: "blob:https://mail.google.com.evil.test/test")!), "Fichiers blob rattachés à l’origine Gmail exacte")
+        let pdfResponse = HTTPURLResponse(url: attachmentURL, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "application/pdf", "Content-Disposition": "inline"])!
+        let htmlResponse = HTTPURLResponse(url: attachmentURL, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "text/html"])!
+        let dispositionResponse = HTTPURLResponse(url: URL(string: "https://mail.google.com/document")!, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "application/pdf", "Content-Disposition": "Attachment; filename=test.pdf"])!
+        try check(GmailAttachmentRouting.downloadResponse(pdfResponse, canShow: true) && GmailAttachmentRouting.downloadResponse(dispositionResponse, canShow: true) && !GmailAttachmentRouting.downloadResponse(htmlResponse, canShow: true), "PDF joint et en-tête Attachment enregistrés, page HTML de connexion conservée comme navigation")
+        try check(AttachmentFileStore.safeName("../../facture.pdf") == "facture.pdf" && AttachmentFileStore.safeName("C:\\dossier\\facture.pdf") == "facture.pdf" && AttachmentFileStore.safeName("..") == "Pièce jointe" && AttachmentFileStore.safeName(".secret\n.pdf") == "secret.pdf", "Nom de fichier limité à un élément visible, sans traversée de dossiers ni caractères de contrôle")
+        try check(AttachmentFileStore.safeName(String(repeating: "é", count: 500)).utf8.count <= 220, "Nom de pièce jointe borné en octets UTF-8")
+        try check(AttachmentFileStore.safeName("/") == "Pièce jointe" && AttachmentFileStore.safeName("a" + String(repeating: "\u{0301}", count: 500)) == "Pièce jointe", "Racine et caractère combiné démesuré remplacés par un nom de fichier valide")
+        let downloadRoot = FileManager.default.temporaryDirectory.appendingPathComponent("Inboxy-file-check-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: downloadRoot) }
+        let fileStore = AttachmentFileStore(destination: downloadRoot)
+        let firstFile = try fileStore.stage("facture.pdf")
+        try Data("original".utf8).write(to: firstFile.file)
+        let firstSaved = try fileStore.finish(firstFile)
+        let duplicate = try fileStore.stage("facture.pdf")
+        try Data("nouveau".utf8).write(to: duplicate.file)
+        let secondSaved = try fileStore.finish(duplicate)
+        let originalBytes = try Data(contentsOf: firstSaved)
+        let newBytes = try Data(contentsOf: secondSaved)
+        try check(firstSaved.lastPathComponent == "facture.pdf" && secondSaved.lastPathComponent == "facture (2).pdf" && originalBytes == Data("original".utf8) && newBytes == Data("nouveau".utf8), "Doublon renommé sans écraser ni modifier les octets du premier fichier")
+        try check(!FileManager.default.fileExists(atPath: firstFile.directory.path) && !FileManager.default.fileExists(atPath: duplicate.directory.path), "Répertoires de préparation retirés après enregistrement réussi")
+        let incomplete = try fileStore.stage("incomplet.pdf")
+        try Data("partiel".utf8).write(to: incomplete.file)
+        fileStore.discard(incomplete)
+        try check(!FileManager.default.fileExists(atPath: incomplete.directory.path) && !FileManager.default.fileExists(atPath: downloadRoot.appendingPathComponent("incomplet.pdf").path), "Téléchargement incomplet retiré sans fichier final trompeur")
         let backupAccount = MailAccount(name: "Boîte à transférer", email: "transfer@example.test", group: "Travail", webOnly: true)
         let sampleCookie = HTTPCookie(properties: [.name: "synthetic-session", .value: "test-cookie-never-a-real-session", .domain: ".example.test", .path: "/", .secure: "TRUE", HTTPCookiePropertyKey(rawValue: "HttpOnly"): "TRUE", .expires: Date().addingTimeInterval(3600)])!
         let backupProfile = BackupProfile(account: backupAccount, cookies: [BackupCookie(sampleCookie)], localStorage: nil, credential: nil)
@@ -103,6 +131,27 @@ import WebKit
         do { _ = try await AppUpdateChecker.latest(currentVersion: "0.3.7", session: updateSession) } catch { offlineRejected = true }
         try check(offlineRejected, "Absence de réseau sans fausse annonce de version à jour")
         updateSession.invalidateAndCancel()
+        let automaticURL = "https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.11/Inboxy-0.3.11-Update.zip"
+        try check(AutomaticUpdatePolicy.trustedArchive(URL(string: automaticURL)!, version: "0.3.11"), "Installation automatique limitée à l’archive dédiée de la version annoncée")
+        let rejectedArchives = [automaticURL.replacingOccurrences(of: "https:", with: "http:"), automaticURL.replacingOccurrences(of: "github.com", with: "github.com.evil.test"), automaticURL + "?download=1", automaticURL.replacingOccurrences(of: "-Update.zip", with: "-macOS.zip"), automaticURL.replacingOccurrences(of: "v0.3.11/", with: "v0.3.10/"), automaticURL.replacingOccurrences(of: "github.com/", with: "user@github.com/")]
+        try check(rejectedArchives.allSatisfy { !AutomaticUpdatePolicy.trustedArchive(URL(string: $0)!, version: "0.3.11") }, "Archives HTTP, tierces, ambiguës ou d’une autre version refusées")
+        let automaticDriver = AutomaticUpdater()
+        var cancellationCount = 0
+        automaticDriver.showDownloadInitiated { cancellationCount += 1 }
+        automaticDriver.showDownloadDidReceiveExpectedContentLength(100)
+        automaticDriver.showDownloadDidReceiveData(ofLength: UInt64.max)
+        automaticDriver.showDownloadDidReceiveData(ofLength: 20)
+        try check(automaticDriver.phase == .downloading(1), "Progression bornée même en cas de longueur excessive sans dépassement entier")
+        automaticDriver.cancel(); automaticDriver.cancel()
+        try check(cancellationCount == 1 && automaticDriver.phase == .cancelled && !automaticDriver.canCancel, "Annulation unique du téléchargement avant installation")
+        automaticDriver.showDownloadInitiated { cancellationCount += 1 }
+        automaticDriver.showDownloadDidStartExtractingUpdate()
+        automaticDriver.cancel()
+        try check(cancellationCount == 1 && automaticDriver.phase == .verifying && !automaticDriver.canCancel, "Annulation désactivée après le début de préparation de l’installation")
+        var acknowledged = false
+        automaticDriver.showUpdaterError(AerisError.message("Signature de test refusée")) { acknowledged = true }
+        automaticDriver.dismissUpdateInstallation()
+        try check(acknowledged && automaticDriver.phase == .failed("Signature de test refusée") && !automaticDriver.canCancel, "Échec conservé à l’écran après le nettoyage du moteur de mise à jour")
         try check(OAuthTools.challenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk") == "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM", "PKCE S256 — vecteur RFC 7636")
         try check(WebSessions.boundedZoom(0.01) == 0.5 && WebSessions.boundedZoom(9) == 2 && WebSessions.boundedZoom(.nan) == 1, "Zoom borné entre 50 et 200 pour cent, valeur invalide neutralisée")
         try check(WebSessions.boundedZoom(1.1 - 0.1) == 1, "Zoom sans dérive des décimales")
