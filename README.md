@@ -8,7 +8,7 @@ Application macOS native pour réunir et organiser plusieurs comptes Gmail dans 
 
 ## Télécharger et installer
 
-[Télécharger Inboxy 0.3.12 pour macOS](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.12/Inboxy-0.3.12-macOS.zip)
+[Télécharger Inboxy 0.3.13 pour macOS](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.13/Inboxy-0.3.13-macOS.zip)
 
 macOS 14 minimum. Application universelle pour **Apple Silicon et Intel**.
 
@@ -71,12 +71,24 @@ Dans la navigation latérale, tirer les deux petites poignées entre les trois b
 Chaque compilation avec le schéma partagé prépare, après signature, un dossier dans `Distribution` avec l’application, le raccourci Applications et le guide texte de mise à jour. Le ZIP de ce dossier est prêt à distribuer. Le script `build.sh` effectue aussi cette préparation, et `package.sh` permet de la lancer sur un bundle Inboxy déjà signé. Les fichiers `package.sh` et `INSTALLATION.txt.in` doivent rester à la racine du projet.
 
 
-## Version 0.3.12 — pièces jointes
+## Version 0.3.13 — pièces jointes
 
 Le bouton de téléchargement Gmail est pris en charge par WebKit dans la session du compte concerné : réponses serveur, fichiers blob et fenêtres de téléchargement. Les fichiers vont dans Téléchargements ; les doublons reçoivent un numéro, et les erreurs de transfert restent visibles.
 
-110 contrôles automatiques réussis et essais WebKit avec fichiers synthétiques, dont un serveur exigeant le cookie de session. La pièce jointe Gmail privée de chaque utilisateur reste à vérifier après installation.
+116 contrôles automatiques réussis et essais WebKit avec fichiers synthétiques, dont un serveur exigeant le cookie de session. La pièce jointe Gmail privée de chaque utilisateur reste à vérifier après installation.
 
-Pour cette publication, installer le ZIP manuellement en suivant les étapes ci-dessus. L’intégration Sparkle a été testée dans une application isolée, mais le flux signé de production n’est pas encore publié ; cette release ne prétend pas activer la distribution automatique des mises à jour.
+Pour activer la nouvelle clé de signature, installer une fois cette version manuellement. Le flux de production et l’archive dédiée sont signés. Le remplacement et la relance ont été vérifiés dans une application de test indépendante.
 
-[Code source complet de 0.3.12](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.12/Inboxy-0.3.12-Sources.zip) · [SHA-256 des archives](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.12/SHA256SUMS.txt)
+[Code source complet de 0.3.13](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.13/Inboxy-0.3.13-Sources.zip) · [SHA-256 des archives](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.13/SHA256SUMS.txt)
+
+## Nouveautés 0.3.13
+
+Après un téléchargement réussi, le fichier est affiché dans le Finder puis ouvert
+avec l’application associée par macOS. Au démarrage, Inboxy propose une nouvelle
+version : « Installer et relancer » ou « Plus tard ». La validation lance le
+téléchargement, la vérification de signature, l’installation et la relance.
+
+**Activation initiale :** installez une fois la version 0.3.13 manuellement pour
+intégrer la nouvelle clé publique de signature. Les versions précédentes ne
+connaissent pas cette clé. Les mises à jour suivantes utilisent le flux signé
+`appcast.xml` et l’archive dédiée `-Update.zip`. Les comptes restent sur le Mac.

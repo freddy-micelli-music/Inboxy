@@ -1,9 +1,12 @@
 INBOXY — LA BOITE À GMAIL
 Version @VERSION@
 
-CORRECTIF DES PIÈCES JOINTES — 0.3.12
+PIÈCES JOINTES ET MISES À JOUR — 0.3.13
 
-Le bouton Télécharger d’une pièce jointe Gmail enregistre maintenant le fichier
+Après chaque téléchargement réussi, Inboxy affiche le fichier dans le Finder
+et l’ouvre avec l’application associée par macOS.
+
+Le bouton Télécharger d’une pièce jointe Gmail enregistre le fichier
 dans le dossier Téléchargements du Mac. Les fichiers portant déjà le même nom
 sont conservés : une copie reçoit un numéro. La flèche de téléchargement du
 bandeau Inboxy permet de retrouver le dernier fichier enregistré dans le Finder.
@@ -36,14 +39,18 @@ Google peut demander une vérification ou une nouvelle connexion sur l’autre M
 
 MISES À JOUR SUIVANTES
 
-Inboxy vérifie les nouvelles versions au démarrage. Vous pouvez également cliquer
+Inboxy vérifie les nouvelles versions au démarrage et propose de les installer.
+Vous pouvez également cliquer
 sur le numéro de version en bas de la barre des comptes. Lorsqu’une nouvelle
-version est proposée, cliquez dessus : Inboxy télécharge la mise à jour signée,
+version est proposée, validez « Installer et relancer » : Inboxy télécharge la mise à jour signée,
 la vérifie, remplace l’application puis se relance automatiquement.
 Le Mac peut demander l’autorisation de remplacer une application protégée.
 
-Cette fonction nécessite une première installation de la version 0.3.11 ou
-ultérieure. Les anciennes versions ouvrent encore la page de téléchargement :
+L’installation automatique nécessite que l’éditeur ait publié le flux et
+l’archive signés. Les fichiers signés sont distribués sur GitHub.
+
+Pour activer la nouvelle signature, installez une première fois la version
+0.3.13 ou ultérieure manuellement. Les anciennes versions ouvrent encore la page de téléchargement :
 pour cette première mise à jour, suivez les étapes d’installation ci-dessus.
 
 COMPATIBILITÉ
