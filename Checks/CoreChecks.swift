@@ -31,6 +31,15 @@ import WebKit
         let secondSaved = try fileStore.finish(duplicate)
         let originalBytes = try Data(contentsOf: firstSaved)
         let newBytes = try Data(contentsOf: secondSaved)
+        var presented: [String] = []
+        let presenter = AttachmentDownloads(destination: downloadRoot,
+            revealFile: { presented.append("reveal:" + $0.path) },
+            openFile: { presented.append("open:" + $0.path); return true })
+        presenter.presentSavedFile(secondSaved)
+        try check(presented == ["reveal:" + secondSaved.path, "open:" + secondSaved.path] && presenter.lastSavedURL == secondSaved && presenter.lastError == nil, "Pièce jointe enregistrée : Finder puis ouverture du fichier exact avec macOS")
+        let unavailableApp = AttachmentDownloads(destination: downloadRoot, revealFile: { _ in }, openFile: { _ in false })
+        unavailableApp.presentSavedFile(secondSaved)
+        try check(unavailableApp.lastError != nil && unavailableApp.lastSavedURL == secondSaved && FileManager.default.fileExists(atPath: secondSaved.path), "Application associée indisponible : fichier conservé et erreur visible")
         try check(firstSaved.lastPathComponent == "facture.pdf" && secondSaved.lastPathComponent == "facture (2).pdf" && originalBytes == Data("original".utf8) && newBytes == Data("nouveau".utf8), "Doublon renommé sans écraser ni modifier les octets du premier fichier")
         try check(!FileManager.default.fileExists(atPath: firstFile.directory.path) && !FileManager.default.fileExists(atPath: duplicate.directory.path), "Répertoires de préparation retirés après enregistrement réussi")
         let incomplete = try fileStore.stage("incomplet.pdf")
@@ -233,6 +242,22 @@ import WebKit
         let freshAccounts = try freshRepository.load()
         try check(freshAccounts.isEmpty, "Première installation sans aucun compte fictif")
         let freshModel = AppModel(persistence: freshRepository)
+        var startupChecks = 0
+        _ = NSApplication.shared
+        let startupOffer = AppUpdateOffer(version: "99.0.0", releaseURL: URL(string: "https://github.com/freddy-micelli-music/Inboxy/releases/tag/v99.0.0")!)
+        let startupModel = AppModel(persistence: freshRepository, updateLookup: { _ in startupChecks += 1; return startupOffer })
+        startupModel.start()
+        for _ in 0..<100 where startupModel.updatePrompt == nil { await Task.yield() }
+        try check(startupChecks == 1 && startupModel.updatePrompt == startupOffer && startupModel.automaticUpdater.phase == .idle, "Démarrage : proposition de mise à jour, sans télécharger avant validation")
+        startupModel.updatePrompt = nil
+        startupModel.start()
+        await Task.yield()
+        try check(startupChecks == 1 && startupModel.updatePrompt == nil && startupModel.updateState.offer == startupOffer, "Plus tard : pas de deuxième proposition au même démarrage, version toujours disponible")
+        startupModel.openProgramVersion()
+        try check(startupModel.updatePrompt == startupOffer, "Clic sur la version : confirmation proposée de nouveau")
+        startupModel.connecting = true
+        startupModel.acceptUpdate(startupOffer)
+        try check(startupModel.alert != nil && startupModel.automaticUpdater.phase == .idle, "Installation différée si une connexion de compte est en cours")
         try check(freshModel.visibleAccounts.isEmpty && freshModel.selectedAccount == nil && freshModel.messages.isEmpty && freshModel.unread.isEmpty, "Premier lancement prêt pour la connexion du premier compte Gmail")
         let oldStoredData = try JSONEncoder().encode(accounts + [legacyDemo])
         try oldStoredData.write(to: repository.url)
