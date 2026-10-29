@@ -31,6 +31,15 @@ struct ContentView: View {
         }
         .background(DarkWindowChrome())
         .background(AutomaticUpdatePresentation(updater: model.automaticUpdater))
+        .alert("Une nouvelle version d’Inboxy est disponible", isPresented: Binding(
+            get: { model.updatePrompt != nil && model.alert == nil && !model.showAdd && !model.showSwitcher && model.composeRequest == nil && !model.accountTransferInProgress },
+            set: { if !$0 { model.updatePrompt = nil } }
+        ), presenting: model.updatePrompt) { offer in
+            Button("Installer et relancer") { model.acceptUpdate(offer) }
+            Button("Plus tard", role: .cancel) { model.updatePrompt = nil }
+        } message: { offer in
+            Text("Inboxy \(offer.version) est disponible. Après votre validation, la mise à jour sera téléchargée, vérifiée et installée, puis Inboxy se relancera. Vos comptes et réglages seront conservés.")
+        }
         .task { model.start() }
     }
     private var navigation: some View {

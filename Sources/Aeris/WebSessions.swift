@@ -74,8 +74,20 @@ struct AttachmentFileStore {
     private var transfers: [ObjectIdentifier: Transfer] = [:]
     private var popups: [ObjectIdentifier: (WKWebView, WebDelegate)] = [:]
     private let store: AttachmentFileStore
-    init(destination: URL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]) {
+    private let revealFile: (URL) -> Void
+    private let openFile: (URL) -> Bool
+    init(destination: URL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0],
+         revealFile: @escaping (URL) -> Void = { NSWorkspace.shared.activateFileViewerSelecting([$0]) },
+         openFile: @escaping (URL) -> Bool = { NSWorkspace.shared.open($0) }) {
         store = AttachmentFileStore(destination: destination)
+        self.revealFile = revealFile; self.openFile = openFile
+    }
+    func presentSavedFile(_ url: URL) {
+        lastSavedURL = url; lastError = nil
+        revealFile(url)
+        if !openFile(url) {
+            lastError = "Pièce jointe enregistrée. macOS n’a pas pu l’ouvrir avec une application ; vous pouvez la retrouver dans le Finder."
+        }
     }
     func adopt(_ download: WKDownload, from web: WKWebView) {
         transfers[ObjectIdentifier(download)] = Transfer(download: download, source: web, navigation: web.navigationDelegate)
@@ -119,7 +131,7 @@ struct AttachmentFileStore {
         guard let transfer = transfers.removeValue(forKey: ObjectIdentifier(download)) else { return }
         defer { activeCount = transfers.count }
         guard let staging = transfer.staging else { return }
-        do { lastSavedURL = try store.finish(staging); lastError = nil }
+        do { presentSavedFile(try store.finish(staging)) }
         catch {
             // Keep completed bytes if Downloads becomes unavailable; offer Save As.
             let panel = NSSavePanel(); panel.nameFieldStringValue = staging.name
@@ -132,7 +144,7 @@ struct AttachmentFileStore {
                     if FileManager.default.fileExists(atPath: url.path) {
                         _ = try FileManager.default.replaceItemAt(url, withItemAt: staging.file)
                     } else { try FileManager.default.moveItem(at: staging.file, to: url) }
-                    self.lastSavedURL = url; self.lastError = nil
+                    self.presentSavedFile(url)
                 } catch { self.lastError = "Pièce jointe non enregistrée : " + error.localizedDescription }
             }
         }

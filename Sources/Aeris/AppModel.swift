@@ -30,6 +30,7 @@ import UserNotifications
     let automaticUpdater = AutomaticUpdater()
     @Published var accountTransferInProgress = false
     @Published private(set) var updateState: AppUpdateState = .idle
+    @Published var updatePrompt: AppUpdateOffer?
     let programVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
     private var checkedUpdatesAtStartup = false
     @AppStorage("gmailFoldersExpanded") var gmailFoldersExpanded = false
@@ -42,6 +43,7 @@ import UserNotifications
     let auth = GoogleAuth()
     let api = GmailAPI()
     private let persistence: AccountPersistence
+    private let updateLookup: (String) async throws -> AppUpdateOffer?
     private var loadTask: Task<Void, Never>?
     private var bodyTask: Task<Void, Never>?
     private var pollTask: Task<Void, Never>?
@@ -97,8 +99,9 @@ import UserNotifications
     }
     var scheme: ColorScheme? { appearance == "dark" ? .dark : appearance == "light" ? .light : nil }
 
-    init(persistence: AccountPersistence = AccountPersistence()) {
+    init(persistence: AccountPersistence = AccountPersistence(), updateLookup: @escaping (String) async throws -> AppUpdateOffer? = { try await AppUpdateChecker.latest(currentVersion: $0) }) {
         self.persistence = persistence
+        self.updateLookup = updateLookup
         do { accounts = try persistence.load() } catch { alert = "Impossible de lire les comptes sauvegardés. Le fichier est conservé : \(error.localizedDescription)" }
         selectedID = visibleAccounts.first?.id
         webSessions.mailboxDidChange = { [weak self] id, state in self?.syncMailbox(id, state) }
@@ -110,7 +113,7 @@ import UserNotifications
     func start() {
         if !checkedUpdatesAtStartup {
             checkedUpdatesAtStartup = true
-            Task { [weak self] in await self?.checkForUpdates() }
+            Task { [weak self] in await self?.checkForUpdates(prompt: true) }
         }
         guard pollTask == nil else { return }
         pollTask = Task { [weak self] in
@@ -123,23 +126,29 @@ import UserNotifications
             }
         }
     }
-    func checkForUpdates() async {
+    func checkForUpdates(prompt: Bool = false) async {
         guard updateState != .checking else { return }
         updateState = .checking
         do {
-            if let offer = try await AppUpdateChecker.latest(currentVersion: programVersion) {
+            if let offer = try await updateLookup(programVersion) {
                 updateState = .available(offer)
+                if prompt { updatePrompt = offer }
             } else { updateState = .upToDate }
         } catch { updateState = .unavailable }
     }
     func openProgramVersion() {
         if case .available(let offer) = updateState {
-            guard !connecting, composeRequest == nil, !accountTransferInProgress, removing.isEmpty, AttachmentDownloads.shared.activeCount == 0 else {
-                alert = "Terminez la connexion, la préparation du message, le téléchargement ou le transfert de comptes avant de lancer la mise à jour."
-                return
-            }
-            automaticUpdater.install(offer)
-        } else { Task { await checkForUpdates() } }
+            updatePrompt = offer
+        } else { Task { await checkForUpdates(prompt: true) } }
+    }
+    func acceptUpdate(_ offer: AppUpdateOffer) {
+        updatePrompt = nil
+        guard updateState.offer == offer, !automaticUpdater.phase.busy else { return }
+        guard !connecting, composeRequest == nil, !accountTransferInProgress, removing.isEmpty, AttachmentDownloads.shared.activeCount == 0 else {
+            alert = "Terminez la connexion, la préparation du message, le téléchargement ou le transfert de comptes avant de lancer la mise à jour."
+            return
+        }
+        automaticUpdater.install(offer)
     }
     func restoreBackup(_ backup: AccountBackup) async throws -> Int {
         try backup.validate()
