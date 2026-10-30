@@ -299,6 +299,49 @@ enum GmailMailboxMetadata {
     }
 }
 
+enum GmailSendCompletion {
+    // Observe Gmail's own confirmation, never the message being composed.
+    // A send click alone is insufficient: failures and scheduled messages stay put.
+    static let observerScript = #"""
+    if (location.protocol !== 'https:' || location.hostname !== 'mail.google.com' || !location.pathname.startsWith('/mail/')) return;
+    if (window.__inboxySendCompletion) return;
+    window.__inboxySendCompletion = true;
+    let attempt = null;
+    let timer = 0;
+    const visible = element => element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden';
+    const confirmations = () => Array.from(document.querySelectorAll('[role="alert"], [role="status"]')).filter(element => {
+        if (!visible(element)) return false;
+        const text = (element.textContent || '').replace(/\s+/g, ' ').trim();
+        return text.length <= 256 && /^(?:Message envoy[ée]|Votre message a [ée]t[ée] envoy[ée]|Message sent|Your message has been sent)[.!]?(?:\s|$)/i.test(text);
+    });
+    const arm = () => { attempt = { started: Date.now(), previous: new Set(confirmations()) }; };
+    document.addEventListener('click', event => {
+        const button = event.target instanceof Element && event.target.closest('button,[role="button"]');
+        if (!button) return;
+        const label = (button.getAttribute('aria-label') || button.getAttribute('data-tooltip') || button.textContent || '').trim();
+        if (/^(?:Envoyer|Send)(?:\s|\(|$)/i.test(label) && !/schedule|programmer/i.test(label)) arm();
+    }, true);
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey &&
+            event.target instanceof Element && event.target.closest('[contenteditable="true"],textarea,input')) arm();
+    }, true);
+    const check = () => {
+        timer = 0;
+        if (!attempt) return;
+        if (Date.now() - attempt.started > 120000) { attempt = null; return; }
+        const current = confirmations();
+        for (const old of attempt.previous) if (!current.includes(old)) attempt.previous.delete(old);
+        if (!current.some(element => !attempt.previous.has(element))) return;
+        attempt = null;
+        // Same WebKit view, same account; a hash change preserves Gmail's SPA and drafts.
+        location.hash = 'inbox';
+    };
+    new MutationObserver(() => { if (!timer) timer = setTimeout(check, 100); })
+        .observe(document.documentElement, { subtree: true, childList: true, characterData: true,
+            attributes: true, attributeFilter: ['class', 'style', 'hidden', 'aria-hidden'] });
+    """#
+}
+
 @MainActor final class GmailMailboxTracker: NSObject, WKScriptMessageHandler {
     static let world = WKContentWorld.world(name: "AerisMailbox")
     var navigationVisible: Bool?
@@ -333,6 +376,7 @@ enum GmailMailboxMetadata {
     func install(on web: WKWebView) {
         guard web.url?.scheme == "https", web.url?.host == "mail.google.com", web.url?.path.hasPrefix("/mail/") == true else { return }
         readLocation()
+        web.callAsyncJavaScript(GmailSendCompletion.observerScript, arguments: [:], in: nil, in: Self.world) { _ in }
         if let visible = navigationVisible {
             web.callAsyncJavaScript(GmailPresentation.navigationScript(visible: visible), arguments: [:], in: nil, in: Self.world) { _ in }
         }
