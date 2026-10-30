@@ -8,7 +8,7 @@ Application macOS native pour réunir et organiser plusieurs comptes Gmail dans 
 
 ## Télécharger et installer
 
-[Télécharger Inboxy 0.3.13 pour macOS](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.13/Inboxy-0.3.13-macOS.zip)
+[Télécharger Inboxy 0.3.14 pour macOS](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.14/Inboxy-0.3.14-macOS.zip)
 
 macOS 14 minimum. Application universelle pour **Apple Silicon et Intel**.
 
@@ -79,7 +79,7 @@ Le bouton de téléchargement Gmail est pris en charge par WebKit dans la sessio
 
 Pour activer la nouvelle clé de signature, installer une fois cette version manuellement. Le flux de production et l’archive dédiée sont signés. Le remplacement et la relance ont été vérifiés dans une application de test indépendante.
 
-[Code source complet de 0.3.13](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.13/Inboxy-0.3.13-Sources.zip) · [SHA-256 des archives](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.13/SHA256SUMS.txt)
+[Code source complet de 0.3.14](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.14/Inboxy-0.3.14-Sources.zip) · [SHA-256 des archives](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.14/SHA256SUMS.txt)
 
 ## Nouveautés 0.3.13
 
@@ -92,3 +92,9 @@ téléchargement, la vérification de signature, l’installation et la relance.
 intégrer la nouvelle clé publique de signature. Les versions précédentes ne
 connaissent pas cette clé. Les mises à jour suivantes utilisent le flux signé
 `appcast.xml` et l’archive dédiée `-Update.zip`. Les comptes restent sur le Mac.
+
+## Nouveautés 0.3.14 - retour après envoi
+
+Après la confirmation Gmail « Message envoyé », Inboxy revient à la boîte de réception du même compte. Une erreur ou un envoi programmé ne provoque pas de retour prématuré. Les confirmations en français et en anglais sont prises en charge.
+
+La clé de signature de 0.3.13 est conservée : cette mise à jour est compatible avec les installations 0.3.13.

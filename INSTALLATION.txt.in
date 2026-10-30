@@ -1,15 +1,12 @@
 INBOXY — LA BOITE À GMAIL
 Version @VERSION@
 
-PIÈCES JOINTES ET MISES À JOUR — 0.3.13
+RETOUR À LA BOÎTE DE RÉCEPTION — 0.3.14
 
-Après chaque téléchargement réussi, Inboxy affiche le fichier dans le Finder
-et l’ouvre avec l’application associée par macOS.
-
-Le bouton Télécharger d’une pièce jointe Gmail enregistre le fichier
-dans le dossier Téléchargements du Mac. Les fichiers portant déjà le même nom
-sont conservés : une copie reçoit un numéro. La flèche de téléchargement du
-bandeau Inboxy permet de retrouver le dernier fichier enregistré dans le Finder.
+Après la confirmation « Message envoyé » de Gmail, Inboxy revient automatiquement
+à la boîte de réception du même compte, sans recharger la page entière.
+Le clic sur Envoyer seul ne provoque aucun retour : une erreur ou un envoi
+programmé laisse le message à l’écran.
 
 INSTALLATION OU MISE À JOUR
 
