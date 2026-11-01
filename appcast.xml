@@ -6,13 +6,13 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <link>https://github.com/freddy-micelli-music/Inboxy</link>
     <description>Mises à jour signées d’Inboxy pour macOS</description>
     <item>
-      <title>Inboxy 0.3.14</title>
-      <pubDate>Fri, 30 Oct 2026 09:05:28 +0000</pubDate>
+      <title>Inboxy 0.3.15</title>
+      <pubDate>Sun, 01 Nov 2026 21:51:57 +0000</pubDate>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.14/Inboxy-0.3.14-Update.zip" length="4424661" type="application/octet-stream" sparkle:version="17" sparkle:shortVersionString="0.3.14" sparkle:edSignature="LK6yYdihowi2crSSYOTZAP9K3Vxkk8Ey91UPeFIm5rCSZyO/lvGQnX+g8KrFjZtJTXlRS4jUun7zMXvcrEs/Dg==" sparkle:installationType="application"></enclosure>
+      <enclosure url="https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.15/Inboxy-0.3.15-Update.zip" length="4427633" type="application/octet-stream" sparkle:version="18" sparkle:shortVersionString="0.3.15" sparkle:edSignature="zKjITJ0jx0E3H5nQ4FS9fpEPSJRTtmBGplFBpz5vLpG3iG8JwZP97GBWw9gsOb7dukcoFH9tYIVuIeYPwgDoCg==" sparkle:installationType="application"></enclosure>
     </item>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: g+y8L8Nl8XAfehVsCoLoVmoQdo1Wl01Sgwr2vWG3aYUBPbM1jtCdOt3eg3J9gKgBtCjKzp57s+dohFYebVFRAg==
+edSignature: dot42kUlGLoKXIA6mYxLNCob86NyVvhSSWY9vZn4TuJw41HkPvjEbSGZAVPHJesKeHy9SSuDYweGKOWz9k24Ag==
 length: 1153
 -->
