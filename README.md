@@ -8,7 +8,7 @@ Application macOS native pour réunir et organiser plusieurs comptes Gmail dans 
 
 ## Télécharger et installer
 
-[Télécharger Inboxy 0.3.15 pour macOS](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.15/Inboxy-0.3.15-macOS.zip)
+[Télécharger Inboxy 0.3.16 pour macOS](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.16/Inboxy-0.3.16-macOS.zip)
 
 macOS 14 minimum. Application universelle pour **Apple Silicon et Intel**.
 
@@ -79,7 +79,7 @@ Le bouton de téléchargement Gmail est pris en charge par WebKit dans la sessio
 
 Pour activer la nouvelle clé de signature, installer une fois cette version manuellement. Le flux de production et l’archive dédiée sont signés. Le remplacement et la relance ont été vérifiés dans une application de test indépendante.
 
-[Code source complet de 0.3.15](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.15/Inboxy-0.3.15-Sources.zip) · [SHA-256 des archives](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.15/SHA256SUMS.txt)
+[Code source complet de 0.3.16](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.16/Inboxy-0.3.16-Sources.zip) · [SHA-256 des archives](https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.16/SHA256SUMS.txt)
 
 ## Nouveautés 0.3.13
 
@@ -120,3 +120,17 @@ Le réglage s’applique à macOS. Les formulaires de contact intégrés aux sit
 restent indépendants. Si un navigateur utilise son propre gestionnaire de
 liens e-mail (par exemple Gmail sur le Web), choisir l’application système
 dans ses réglages de messagerie.
+
+## Nouveautés 0.3.16 — retour après envoi depuis un lien e-mail
+
+Après le choix du compte Gmail et l’envoi depuis un lien e-mail du navigateur,
+la confirmation d’envoi ferme le mode de rédaction séparé et revient à la
+réception du même compte. Les paramètres destinataire, objet et texte de
+rédaction sont retirés de l’adresse de retour ; le compte et la langue restent
+conservés. Une erreur ou un envoi programmé ne déclenche pas de retour.
+
+Validation : compilation universelle, 116 contrôles existants et 17 contrôles
+WebKit synthétiques, dont confirmations françaises et anglaises, erreur, envoi
+programmé et absence de faux succès. Aucun e-mail réel envoyé pendant ces tests.
+Pour reproduire les contrôles WebKit : `sh ./check-send-return.sh`, puis ouvrir
+Checks.app indiqué ; résultat dans `$TMPDIR/InboxySendReturnChecks.log`.
