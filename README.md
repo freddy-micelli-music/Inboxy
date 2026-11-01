@@ -93,7 +93,7 @@ intégrer la nouvelle clé publique de signature. Les versions précédentes ne
 connaissent pas cette clé. Les mises à jour suivantes utilisent le flux signé
 `appcast.xml` et l’archive dédiée `-Update.zip`. Les comptes restent sur le Mac.
 
-## Nouveautés 0.3.15 - retour après envoi
+## Nouveautés 0.3.14 - retour après envoi
 
 Après la confirmation Gmail « Message envoyé », Inboxy revient à la boîte de réception du même compte. Une erreur ou un envoi programmé ne provoque pas de retour prématuré. Les confirmations en français et en anglais sont prises en charge.
 
@@ -104,3 +104,19 @@ La clé de signature de 0.3.13 est conservée : cette mise à jour est compatibl
 Éditeur : Backtotheapp.com. Site : https://inboxy.backtotheapp.com.
 Contact : contact@backtotheapp.com. Ces deux liens sont cliquables dans À propos.
 La clé de signature existante est conservée pour les mises à jour automatiques.
+
+## Ouvrir les liens e-mail du navigateur dans Inboxy
+
+Cette fonction est incluse dans Inboxy 0.3.15. Sur chaque Mac, ouvrir
+**Inboxy → Réglages → Général → Finder et messagerie**, puis cliquer sur
+**Utiliser Inboxy pour les liens e-mail**.
+
+Un clic sur un lien e-mail classique (`mailto:`) ouvre Inboxy et affiche
+**Choisissez le compte Gmail expéditeur**. Après votre choix, le nouveau message
+est préparé dans ce compte avec le destinataire du lien. Aucun message n’est
+envoyé sans votre validation.
+
+Le réglage s’applique à macOS. Les formulaires de contact intégrés aux sites
+restent indépendants. Si un navigateur utilise son propre gestionnaire de
+liens e-mail (par exemple Gmail sur le Web), choisir l’application système
+dans ses réglages de messagerie.
