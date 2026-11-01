@@ -309,11 +309,18 @@ enum GmailSendCompletion {
     let attempt = null;
     let timer = 0;
     const visible = element => element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden';
-    const confirmations = () => Array.from(document.querySelectorAll('[role="alert"], [role="status"]')).filter(element => {
-        if (!visible(element)) return false;
-        const text = (element.textContent || '').replace(/\s+/g, ' ').trim();
-        return text.length <= 256 && /^(?:Message envoy[ée]|Votre message a [ée]t[ée] envoy[ée]|Message sent|Your message has been sent)[.!]?(?:\s|$)/i.test(text);
-    });
+    const standalone = new URLSearchParams(location.search).get('view') === 'cm';
+    const sentText = text => text.length <= 256 && /^(?:Message envoy[ée]|Votre message a [ée]t[ée] envoy[ée]|Message sent|Your message has been sent)[.!]?(?:\s|$)/i.test(text);
+    const confirmations = () => {
+        const candidates = Array.from(document.querySelectorAll('[role="alert"], [role="status"]'));
+        // Gmail's standalone composer can replace the editor with a plain success page.
+        // Consider that page only once all editable fields have disappeared.
+        if (standalone && !Array.from(document.querySelectorAll('[contenteditable="true"],textarea,input:not([type="hidden"]),[role="textbox"]')).some(visible)) {
+            candidates.push(...Array.from(document.querySelectorAll('body p,body div,body span')).filter(element =>
+                element.children.length === 0 && !element.closest('[contenteditable],textarea,input,[role="textbox"]')));
+        }
+        return candidates.filter(element => visible(element) && sentText((element.textContent || '').replace(/\s+/g, ' ').trim()));
+    };
     const arm = () => { attempt = { started: Date.now(), previous: new Set(confirmations()) }; };
     document.addEventListener('click', event => {
         const button = event.target instanceof Element && event.target.closest('button,[role="button"]');
@@ -333,8 +340,21 @@ enum GmailSendCompletion {
         for (const old of attempt.previous) if (!current.includes(old)) attempt.previous.delete(old);
         if (!current.some(element => !attempt.previous.has(element))) return;
         attempt = null;
-        // Same WebKit view, same account; a hash change preserves Gmail's SPA and drafts.
-        location.hash = 'inbox';
+        if (standalone) {
+            // Exit view=cm/fs=1 rather than leaving the standalone composer active.
+            // Retain account selection and language, never recipient/body parameters.
+            const destination = new URL(location.href);
+            const retained = new URLSearchParams();
+            for (const key of ['authuser', 'hl']) {
+                for (const value of destination.searchParams.getAll(key)) retained.append(key, value);
+            }
+            destination.search = retained.toString();
+            destination.hash = 'inbox';
+            location.replace(destination.href);
+        } else {
+            // Gmail's normal workspace keeps its SPA and other open drafts intact.
+            location.hash = 'inbox';
+        }
     };
     new MutationObserver(() => { if (!timer) timer = setTimeout(check, 100); })
         .observe(document.documentElement, { subtree: true, childList: true, characterData: true,
