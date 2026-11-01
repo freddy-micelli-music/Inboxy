@@ -129,14 +129,18 @@ private struct InboxyAboutView: View {
                 Text("Inboxy").font(.system(size: 28, weight: .bold))
                 Text("LA BOITE À GMAIL.").font(.system(size: 12, weight: .medium)).italic().tracking(1.5)
             }
-            (Text("Éditeur").bold() + Text(" : Frédéric Fantino"))
+            (Text("Éditeur").bold() + Text(" : Backtotheapp.com"))
                 .font(.system(size: 13))
             VStack(alignment: .leading, spacing: 16) {
                 Text("Inboxy est un logiciel indépendant de traitement et d'organisation des boîtes Gmail. Il n'est pas affilié à Google LLC.")
                 Text("Merci d'utiliser Inboxy. Vos retours sont précieux pour faire évoluer l'application.")
             }.font(.system(size: 13)).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
-            Text("© 2027 Fantino. Tous droits réservés.").font(.system(size: 11)).foregroundStyle(.secondary)
+            VStack(spacing: 8) {
+                Link("inboxy.backtotheapp.com", destination: URL(string: "https://inboxy.backtotheapp.com")!)
+                Link("contact@backtotheapp.com", destination: URL(string: "mailto:contact@backtotheapp.com")!)
+            }.font(.system(size: 13))
+            Text("© 2027 - backtotheapp.com").font(.system(size: 11)).foregroundStyle(.secondary)
         }.padding(32).frame(width: 520)
     }
 }
