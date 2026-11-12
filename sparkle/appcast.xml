@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><!-- sparkle-sign-warning:
+IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
+--><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+  <channel>
+    <title>Inboxy</title>
+    <item>
+      <title>Inboxy 0.3.17</title>
+      <pubDate>Thu, 12 Nov 2026 23:40:24 GMT</pubDate>
+      <sparkle:version>20</sparkle:version>
+      <sparkle:shortVersionString>0.3.17</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <enclosure url="https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.17/Inboxy-0.3.17-Update.zip" length="4493743" type="application/octet-stream" sparkle:edSignature="eQB9rZVtHvtCoav39gOW+p+sYyzNXokjXtmRVFjsBEfkkWuRijB+9fb1+fE7Np9iPF/7rZIje7dKJi0V7sDyAQ==" sparkle:installationType="application"></enclosure>
+    </item>
+  </channel>
+</rss><!-- sparkle-signatures:
+edSignature: kgxJpG38psDF0w2fZcEKnDbCER0lUVl+18M7P6M6GVmQXtzxlp2pg2RWyE6K6J7wmng5DC/n2qLdMMM8tUgSCA==
+length: 1068
+-->
