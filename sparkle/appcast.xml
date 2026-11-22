@@ -4,15 +4,14 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
   <channel>
     <title>Inboxy</title>
     <item>
-      <title>Inboxy 0.3.17</title>
-      <pubDate>Thu, 12 Nov 2026 23:40:24 GMT</pubDate>
-      <sparkle:version>20</sparkle:version>
-      <sparkle:shortVersionString>0.3.17</sparkle:shortVersionString>
+      <title>Inboxy 0.3.19</title>
+      <pubDate>Sun, 22 Nov 2026 10:59:43 +0000</pubDate>
+      <description>Nouvelle icône transparente et personnalisation de la couleur du fond depuis la barre supérieure.</description>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.17/Inboxy-0.3.17-Update.zip" length="4493743" type="application/octet-stream" sparkle:edSignature="eQB9rZVtHvtCoav39gOW+p+sYyzNXokjXtmRVFjsBEfkkWuRijB+9fb1+fE7Np9iPF/7rZIje7dKJi0V7sDyAQ==" sparkle:installationType="application"></enclosure>
+      <enclosure url="https://github.com/freddy-micelli-music/Inboxy/releases/download/v0.3.19/Inboxy-0.3.19-Update.zip" length="3246281" type="application/octet-stream" sparkle:version="22" sparkle:shortVersionString="0.3.19" sparkle:edSignature="hK2JDprvEF/XA7pOejmsCw5ybe7JX1W9utvwi/1XSXCP6pu8QietX1buWgaNNXCcjxO4L4L8fHhMnPTTfK7ABA=="></enclosure>
     </item>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: kgxJpG38psDF0w2fZcEKnDbCER0lUVl+18M7P6M6GVmQXtzxlp2pg2RWyE6K6J7wmng5DC/n2qLdMMM8tUgSCA==
-length: 1068
+edSignature: vffoLpKrlPXCPMJdJ8M8Jw8nfpTOHk6xwWgjBjA+r4OGZ/B6jQBD6IG60HtuQeMhIYx6fP2Cwt4CnPIo4GyqDw==
+length: 1107
 -->
